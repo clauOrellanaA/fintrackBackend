@@ -1,0 +1,32 @@
+name: Repository CI
+on:
+  push:
+    branches: [main, dev, qa]
+  pull_request:
+    branches: [main, dev, qa]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  structure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate repository foundation
+        shell: bash
+        run: |
+          set -euo pipefail
+          for file in README.md CONTRIBUTING.md .gitignore .env.example docs/architecture.md docs/integration.md; do
+            test -s "$file"
+          done
+          for feature in dashboard transactions budgets reports savings-goals notifications auth users; do
+            test -d "src/modules/$feature"
+          done
+          if git ls-files | grep -E '(^|/)\.env($|\.)' | grep -vE '(^|/)\.env\.example$'; then
+            echo 'Environment files must not be tracked.'
+            exit 1
+          fi
+          git diff --check $(git hash-object -t tree /dev/null) HEAD
+      - name: Validate Docker Compose configuration
+        run: docker compose --env-file .env.example config --quiet

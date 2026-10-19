@@ -29,7 +29,7 @@ Pruebas backend con node:test y PostgreSQL real aislado para migraciones, identi
 
 ## HTTP y evolucion compatible
 
-GET /api/v1/dashboard?month=YYYY-MM queda adoptado. OpenAPI JSON en `openapi/dashboard.v1.json`. No aceptar parametros desconocidos, incluido userId; month repetido o invalido devuelve 400. Sesion se comprueba antes del periodo; ausencia, revocacion o expiracion devuelve 401. Respuestas privadas Cache-Control: no-store. Capturar un unico asOf UTC por consulta.
+GET /api/v1/dashboard?month=YYYY-MM queda adoptado. OpenAPI JSON en `openapi/dashboard.v1.json`. No aceptar parametros desconocidos, incluido userId; month repetido o invalido devuelve 400. Sesion se comprueba antes del periodo; ausencia, revocacion o expiracion devuelve 401. Todas las respuestas de login, session y dashboard (incluidos errores) llevan Cache-Control: no-store. Capturar un unico asOf UTC por consulta.
 
 Envelope estable `period`, `currency`, `asOf`, `sections`. Cada seccion es `{status: "notAvailable"}` hasta su feature; al implementarse cambia a `{status: "ready", data: ...}`. No confundir notAvailable con vacio. BE-01 entrega las cinco secciones notAvailable; BE-02 habilita balance; BE-03 monthlySummary; BE-04 expenseDistribution; BE-05 budgets; BE-06 savingsGoals. Frontend debe manejar ambos estados y propiedades adicionales futuras. No quitar ni cambiar tipo de campos existentes en v1.
 

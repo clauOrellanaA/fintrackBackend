@@ -19,4 +19,6 @@ Las features no deben depender de detalles internos de otras features. Las opera
 
 El dinero usa decimales exactos en PostgreSQL y contrato JSON explicito, evitando calculos monetarios con punto flotante. Moneda BOB, escala 2, zona America/La_Paz y reglas de redondeo estan aprobadas en dashboard-contract.md.
 
+La capacidad NUMERIC(14,2) del contrato se implementa mediante NUMERIC sin typmod y CHECK de escala y limites: evita que PostgreSQL redondee entradas antes de validarlas. Ver be-01-delivery.md para la razon y evidencia.
+
 Hay autenticacion mediante sesiones bearer opacas revocables y expirables, con scrypt para passwords; identidad obtenida del guard, nunca del navegador. Hay restricciones financieras minimas de integridad y consultas por propietario. Las formulas de saldo, resumen, distribucion, presupuestos y metas aun no estan implementadas. Ver contrato BE-00 y evidencia BE-01.

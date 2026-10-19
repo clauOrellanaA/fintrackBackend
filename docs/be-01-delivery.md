@@ -6,9 +6,13 @@ origin/dev al preparar BE-00: 76cfc459911c2149569988febf9c9e1f2b56be45. El arran
 
 El usuario aprobo expresamente esta rama dependiente el 2026-10-18. No se hizo merge ni se publico dev/qa/main. El diff contra dev incluye arranque y contrato; revisar implementacion BE-01 contra su base exacta y coordinar integracion de prerrequisitos por separado. BE-00 conserva su rama y worktree propios.
 
+Durante la entrega origin/dev avanzo externamente a bbed2677d3057a251b8a2b0d6164eb741c013f11 al integrar BE-00 en PR #3. El contrato permanece identico a la version integrada para evitar conflicto add/add de los cherry-picks; las precisiones de implementacion se registran aqui y en arquitectura. PR BE-01: https://github.com/clauOrellanaA/fintrackBackend/pull/4 . La integracion efectiva de arranque en dev sigue pendiente; este agente no la realiza.
+
 ## Entrega y limites
 
 DataSource TypeORM, migracion de users/sessions/categories/transactions, apertura monetaria explicita, FK compuestas por propietario, validacion de fechas y devoluciones, seed local reproducible para dos usuarios, passwords scrypt N=131072 r=8 p=1, sesiones aleatorias 256 bits con hashes persistidos/TTL8h/revocacion. Controlador dashboard protegido y periodo semiabierto con zona IANA. No hay datos financieros falsos: las secciones siguen notAvailable. Registro publico y CRUD completos quedan fuera de alcance.
+
+D01 se implementa con NUMERIC sin typmod y CHECK(scale<=2, valor absoluto<=999999999999.99): capacidad equivalente a NUMERIC(14,2), conservando rechazo de exceso decimal. NUMERIC(14,2) redondearia antes del CHECK, por eso se usan restricciones explicitas en la migracion sin cambiar moneda, escala ni limites aprobados. D07 concreta TypeORM 0.3.31 y Luxon 3.7.2 fijados en package-lock.
 
 Migraciones y seed solo mediante comandos explicitos; produccion no acepta seed. Ninguna prueba modifica la base local del usuario. El test crea y elimina su propia base con nombre aleatorio dentro de una instancia aislada y exige configuracion dedicada.
 

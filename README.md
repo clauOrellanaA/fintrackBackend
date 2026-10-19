@@ -6,7 +6,7 @@ Equipo **Cosa1ycosa2**: Luciana Salinas y Claudia Orellana.
 
 ## Estado
 
-BE-01 implementa TypeORM/PostgreSQL, migracion de usuarios, sesiones, categorias y movimientos, login/logout y dashboard protegido con validacion de mes. BE-02 agrega saldo exacto acumulado con moneda y corte; BE-03 agrega ingresos y gastos mensuales separados; BE-04 agrega distribucion de gastos por categoria con importes y porcentajes exactos. Presupuestos y metas siguen `notAvailable` hasta BE-05/BE-06. El health check `pg` sigue independiente de la persistencia ORM.
+BE-01 implementa TypeORM/PostgreSQL, migracion de usuarios, sesiones, categorias y movimientos, login/logout y dashboard protegido con validacion de mes. BE-02 agrega saldo acumulado; BE-03 ingresos y gastos mensuales; BE-04 distribucion por categoria; BE-05 indicadores de presupuestos por categoria/mes con limite, consumo, restante, progreso y estado exactos. Solo metas sigue `notAvailable` hasta BE-06. El health check `pg` sigue independiente de la persistencia ORM.
 
 ## Desarrollo local
 
@@ -40,6 +40,8 @@ Los scripts, configuraciones y lockfile se versionan. `.env`, `node_modules` y `
 
 Tras migrar una base de desarrollo, configurar `NODE_ENV=development` y un `SEED_PASSWORD` local de entre 12 y 1024 caracteres (en `.env` o variable del proceso), despues ejecutar `npm run db:seed`. Crea `alice@fintrack.test` y `bob@fintrack.test` con aperturas explicitas, categorias y movimientos distintos. Repetirlo no duplica ni borra datos y no cambia passwords existentes. No registra password ni token. Se rechaza fuera de development/test y no se ejecuta automaticamente.
 
+BE-05 agrega una segunda migracion para budgets; ejecuta `npm run db:migrate` antes de repetir el seed sobre una base BE-01. El seed amplia tambien usuarios existentes: tres presupuestos en febrero2026 (80%,100%,excedido), limite100.00 para alice y200.00 para bob. Agrega seis movimientos demo por persona, tres gastos y tres ingresos compensatorios al mismo instante: saldo acumulado y datos de octubre no cambian. IDs deterministas evitan duplicados incluso al revertir/reaplicar la migracion de budgets. Presupuestos, passwords, aperturas y movimientos preexistentes no se sobreescriben. Una apertura posterior a los datos demo causa rollback completo, sin omitir su validacion.
+
 `POST /api/v1/auth/login` con JSON `{"email":"alice@fintrack.test","password":"<tu password local>"}` obtiene token aleatorio valido 8 horas. Usar `Authorization: Bearer <token>` en `GET /api/v1/dashboard?month=2026-10`; `DELETE /api/v1/auth/session` lo revoca. No enviar userId. Proteger HTTP con HTTPS fuera de localhost; el frontend conserva token solo en memoria. No existe registro publico ni CRUD financiero completo en esta entrega.
 
 ## Pruebas reales
@@ -54,7 +56,7 @@ $env:TEST_DATABASE_URL = 'postgresql://fintrack_test:isolated-test-only@127.0.0.
 npm test
 ```
 
-Esperar a que PostgreSQL acepte conexiones antes de ejecutar la suite. CI usa un servicio PostgreSQL 17 dedicado y ejecuta los mismos tests junto a npm ci, lint, tipos y build. La suite incluye saldo BE-02, resumen BE-03 y distribucion BE-04; calculos BE-05/BE-06 quedan pendientes. Ver evidencias [BE-02](docs/be-02-delivery.md), [BE-03](docs/be-03-delivery.md) y [BE-04](docs/be-04-delivery.md) para casos y extension obligatoria de reservas en BE-06.
+Esperar a que PostgreSQL acepte conexiones antes de ejecutar la suite. CI usa un servicio PostgreSQL 17 dedicado y ejecuta los mismos tests junto a npm ci, lint, tipos y build. La suite incluye BE-02 a BE-05, migraciones desde vacio/upgrade y seed ampliado; metas BE-06 queda pendiente. Ver evidencias [BE-02](docs/be-02-delivery.md), [BE-03](docs/be-03-delivery.md), [BE-04](docs/be-04-delivery.md) y [BE-05](docs/be-05-delivery.md) para casos y extension obligatoria de reservas en BE-06.
 
 ## Arquitectura
 

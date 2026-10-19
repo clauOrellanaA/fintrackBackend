@@ -1,53 +1,29 @@
-# Equipo de agentes FinanTrack
+# Equipo de backend de FinanTrack
 
-Esta carpeta y la skill de colaboracion estan habilitadas para versionarse en ambos repositorios por instruccion del usuario. No incluir credenciales ni ajustes personales.
-La misma configuracion esta instalada en frontend y backend para iniciar una sesion desde cualquiera.
-Las copias son independientes: al cambiar roles, actualizar ambas.
+Esta configuración coordina exclusivamente fintrackBackend mediante `$fintrack-collaboration`. Describe la funcionalidad y el resultado esperado.
 
-## Archivos
+| Etapa | Rol local | Entrega |
+| --- | --- | --- |
+| Planificación | backend-planner | Alcance, contrato y aceptación |
+| Código | backend-coder | Implementación local |
+| Revisión | backend-reviewer | Hallazgos independientes |
+| Escritura de tests | backend-test-writer | Tests y fixtures |
+| Documentación | backend-documenter | Documentación comprobada |
+| Pruebas | backend-qa | Ejecución y evidencia |
 
-- config.toml: coordinacion del agente principal y hasta tres especialistas simultaneos.
-- agents/frontend.toml: React, TypeScript, Vite y consumo de API.
-- agents/backend.toml: NestJS, autenticacion y reglas financieras.
-- agents/database.toml: PostgreSQL, integridad y migraciones.
+Usa database-specialist para persistencia PostgreSQL, migraciones, seeds, entidades, restricciones, índices y transacciones de este backend.
+
 
 ## Uso
 
-Abre una nueva sesion de Codex en el repositorio para cargar la configuracion local.
-Si Codex solicita confiar en el proyecto, revisa y acepta solo si corresponde; una configuracion local puede no cargarse en proyectos no confiables.
-Ejemplo de pedido:
+Abre una nueva sesión de Codex en este repositorio para cargar sus roles locales.
 
-"Usa frontend, backend y database para planificar el registro de movimientos. Acuerden el contrato y las responsabilidades. No implementen todavia."
+> Usa $fintrack-collaboration. Implementa [descripción de la funcionalidad].
 
-Para implementar una tarea autorizada, indica la feature y el resultado esperado. El coordinador elegira solo los especialistas necesarios.
-El principal coordina: no es necesario un cuarto agente personalizado.
-Los agentes heredan el modelo y permisos de la sesion; estos archivos no conceden acceso al repo hermano.
-Si solo esta abierto el frontend, puede ser necesario habilitar el backend como carpeta de trabajo o aprobar su escritura.
+Los subagentes no leen ni modifican el repositorio hermano ni ejecutan comandos en él. Los contratos necesarios se mantienen en el repositorio propio o se proporcionan mediante el coordinador. Si hace falta trabajo en la otra capa, se entrega una dependencia para una sesión separada de ese repositorio. La separación se establece mediante roles e instrucciones; no configura un aislamiento técnico del sistema de archivos.
 
-## Acuerdo de colaboracion
+Hay hasta tres subagentes simultáneos, trabajando por turnos y sin descendientes. Test-writer escribe tests; QA verifica de forma independiente. Revisión y QA no editan código. Los agentes heredan modelo y permisos de la sesión.
 
-1. Leer arquitectura e integracion; revisar la rama y cambios actuales.
-2. Definir contrato API, modelo y formato monetario/fechas.
-3. Asignar un escritor por archivo; database y backend deben acordar quien edita entidades ORM.
-4. Paralelizar tareas independientes; comunicar cambios de contrato antes de consumirlos.
-5. Integrar y verificar con los comandos realmente disponibles.
+Skill: ../.agents/skills/fintrack-collaboration/SKILL.md. Las copias de backend y frontend tienen alcance distinto y no deben sobrescribirse una con otra.
 
-Los archivos no ejecutan codigo ni despliegan por si solos. La carga y seleccion de agentes depende de la version y cliente de Codex.
-No se han fijado modelos ni modificado ajustes globales. No hay credenciales en esta carpeta.
-Para features de implementacion asignadas, el usuario autoriza crear ramas y realizar commit/push limitado a su feature. Usar worktree independiente y responsable unico de Git; leer C:/fintrack/docs/git-por-feature.md. Las tareas de solo planificacion/revision no publican automaticamente. No realizar merge ni despliegue. Flujo del equipo: feature -> dev -> qa -> main.
-
-## Git
-
-/.codex/ y /.agents/skills/fintrack-collaboration/ no estan excluidas de Git; pueden agregarse con rutas explicitas, sin git add -f.
-Los archivos .env y .env.* siguen ignorados; solo .env.example puede versionarse.
-Publicar mediante rama propia y PR hacia dev, siguiendo CONTRIBUTING.md. Este cambio no autoriza merge ni despliegue.
-
-Referencia oficial: https://developers.openai.com/codex/subagents
-
-## Skill de colaboracion
-
-El protocolo compartido esta en ../.agents/skills/fintrack-collaboration/SKILL.md (ruta relativa a esta carpeta .codex). El coordinador y los tres roles lo referencian explicitamente.
-
-En una nueva sesion puedes pedir: "Usa $fintrack-collaboration para planificar una feature con los agentes necesarios, sin implementar todavia".
-
-La skill tambien puede versionarse y las copias de ambos repositorios deben mantenerse sincronizadas.
+Aplica C:/fintrack/docs/git-por-feature.md: worktree por feature, responsable único de Git y publicación limitada a la rama autorizada. Solo planificación/revisión no publica; merge y despliegue requieren autorización aparte. Solo el coordinador actualiza C:/fintrack/docs. No versionar secretos ni .env. Cargar esta configuración no inicia features ni publica cambios.

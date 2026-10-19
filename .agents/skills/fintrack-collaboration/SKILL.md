@@ -1,67 +1,56 @@
 ---
 name: fintrack-collaboration
-description: Coordina los especialistas frontend, backend y database de FinanTrack cuando una tarea requiere integrar interfaz, API o persistencia, o cuando se solicita trabajar con estos subagentes.
+description: Orquesta funcionalidades de backend de FinanTrack en fintrackBackend, con roles de planificación, código, revisión, tests, documentación y pruebas y un especialista PostgreSQL.
 ---
 
-# Colaboracion FinanTrack
+# Orquestación de funcionalidades FinanTrack
 
-Aplica esta skill al coordinar trabajo entre dominios. Una tarea de un solo dominio puede resolverse con un unico especialista; no lances los tres por rutina.
-El coordinador es la sesion principal. Los especialistas no crean mas subagentes.
+La sesión principal es el coordinador y único punto de entrada del usuario. Convierte la descripción de la funcionalidad en entregas concretas; el usuario no necesita elegir agentes ni redactar tareas técnicas. No inicia funcionalidades por cargar esta skill. Si pide solo planificar o revisar, limita el trabajo a eso.
 
-## Contexto y propiedad
+## Límite de repositorio
 
-Lee docs/architecture.md, docs/integration.md y CONTRIBUTING.md del repositorio afectado. Distingue lo implementado de lo planificado.
+Tu único repositorio de trabajo es fintrackBackend, dentro del worktree absoluto asignado. No leas, busques, edites ni ejecutes comandos en el repositorio hermano ni en sus worktrees. No delegues trabajo de la otra capa. Puedes leer las instrucciones aplicables de C:/fintrack/AGENTS.md y C:/fintrack/docs/git-por-feature.md, y los documentos compartidos de C:/fintrack/docs que el coordinador asigne; no los edites. Si necesitas un contrato o cambio de la otra capa, entrega al coordinador una solicitud con los datos necesarios, sin acceder al otro repositorio. Los contratos deben estar disponibles en el repositorio propio o ser proporcionados por el coordinador. Esta regla es de alcance; no modifica los permisos técnicos de la sesión.
 
-| Rol | Propiedad habitual | Entrega a otros roles |
+El coordinador usa solo las definiciones locales de este repositorio. Para una funcionalidad que abarque ambas capas, completa la parte local y entrega un traspaso con API, ejemplos, aceptación y dependencias para una sesión separada del otro repositorio. No declares completada la funcionalidad global si esa dependencia sigue pendiente.
+
+## Contexto y alcance
+
+Lee AGENTS.md y C:/fintrack/docs/git-por-feature.md; consulta los backlogs backend/frontend pertinentes en C:/fintrack/docs y arquitectura, integración y CONTRIBUTING del repositorio afectado. Comprueba implementación, rama y cambios reales; los backlogs no sustituyen la evidencia del código. No ejecutes el backlog completo por defecto.
+
+Identifica aceptación observable, capas afectadas, dependencias y contrato existente. Resuelve decisiones técnicas rutinarias con las convenciones del proyecto. Pregunta solo por decisiones de negocio o información imprescindible que no pueda inferirse y continúa las tareas independientes.
+
+## Equipos específicos
+
+| Etapa | Rol local | Entrega |
 | --- | --- | --- |
-| frontend | fintrackFrontend/src/app, src/features y src/shared | Necesidades de interfaz, tipos y consumo HTTP |
-| backend | fintrackBackend/src/modules, src/config y src/shared | Endpoints, DTO, errores y reglas de autorizacion |
-| database | fintrackBackend/src/database | Esquema, migraciones, integridad y contrato de persistencia |
+| Planificación | backend-planner | Alcance, contrato y aceptación |
+| Código | backend-coder | Implementación local |
+| Revisión | backend-reviewer | Hallazgos independientes |
+| Escritura de tests | backend-test-writer | Tests y fixtures |
+| Documentación | backend-documenter | Documentación comprobada |
+| Pruebas | backend-qa | Ejecución y evidencia |
 
-Las entidades ORM, Compose, configuracion compartida y documentos tienen un unico escritor que asigna el coordinador. Las rutas son limites de responsabilidad, no permisos adicionales del entorno.
+Usa database-specialist para persistencia PostgreSQL, migraciones, seeds, entidades, restricciones, índices y transacciones de este backend.
 
-## Contrato antes de trabajo paralelo
+Las definiciones están en .codex/agents/<nombre>.toml de cada repositorio. No existen roles generales backend/frontend/database. Usa los agentes personalizados si el cliente los expone. Si la herramienta de delegación solo acepta una tarea textual, lee el TOML del rol y transmite sus developer_instructions y el encargo al subagente; el nombre de la tarea por sí solo no carga esas instrucciones. Si no hay delegación disponible, declara la limitación y aplica las responsabilidades secuencialmente sin fingir una revisión independiente.
 
-El coordinador identifica el alcance y comparte un acuerdo breve con los roles afectados:
+## Asignación y turnos
 
-- Operacion, ruta HTTP, metodo, request, response y errores esperados.
-- Autenticacion y aislamiento de los datos por usuario.
-- Formato monetario exacto, moneda, fechas, zona horaria y redondeo cuando corresponda.
-- Modelo afectado, restricciones y compatibilidad de migraciones.
-- Archivos de cada escritor y criterios de aceptacion.
+El coordinador lanza directamente los roles del equipo local; los especialistas no generan descendientes. Respeta el menor límite entre configuración y sesión: con cuatro plazas totales, como máximo tres subagentes simultáneos. Ejecuta por turnos, reutiliza agentes mediante nuevas tareas cuando corresponda y libera hilos completados si el cliente lo permite antes de abrir otros. Si la capacidad permanece ocupada, no intentes sobrepasarla; continúa secuencialmente o informa el bloqueo real. No mantengas coordinadores intermedios ocupando plazas.
 
-Usa el contrato existente si lo hay. No inventes endpoints como si ya estuvieran implementados. Si la tarea solo pide diseno, entrega acuerdos sin generar codigo.
+Antes de cualquier edición asigna ID/objetivo, repo, base y SHA, rama, worktree absoluto, propietario único de Git, archivos de escritura, contrato, dependencias y aceptación. Pasa la ruta absoluta de esta skill a cada rol, especialmente si el worktree aún no la contiene. Un archivo tiene un único escritor a la vez, incluyendo entidades, configuración, OpenAPI y tests. Revisores y QA no editan código ni corrigen sus propios hallazgos.
 
-## Delegacion y entrega
+## Flujo de entrega
 
-Asigna a cada agente objetivo, repositorio absoluto, archivos propios, contrato y validacion esperada. El principal puede tener hasta tres especialistas simultaneos.
+1. **Planificar:** activa backend-planner y database-specialist si corresponde. Consolida un acuerdo único de API (ruta/método, request/response/errores), autenticación, propiedad por usuario, dinero/moneda/redondeo, fechas/zona horaria y persistencia. Conserva contratos existentes; comunica cambios antes de consumirlos. No implementes decisiones de negocio aún pendientes.
+2. **Preparar:** para implementación aplica el protocolo Git: inspecciona status/remotos/worktrees, fetch de origin/dev y base integrada, un worktree por feature en C:/fintrack/worktrees, un responsable de Git por rama. Esta sesión prepara únicamente ramas y commits del repositorio local; el trabajo del repositorio hermano se entrega como dependencia externa. No cambies ramas en carpetas compartidas ni incluyas cambios previos del usuario.
+3. **Construir:** asigna código a backend-coder y persistencia a database-specialist. Paraleliza solo tareas locales con archivos separados y contrato estable. Los fixtures identificados no acreditan integración real. Los test-writers pueden preparar tests de aceptación en paralelo si no comparten archivos; entregan su cobertura y ejecuciones.
+4. **Revisar:** los reviewers inspeccionan el diff y aceptación sin editar. Devuelve defectos a su propietario; tras cambios revisa nuevamente lo afectado. No presentes autoevaluación del coder como revisión independiente.
+5. **Comprobar:** QA ejecuta checks reales y aceptación sobre la versión corregida. Consulta package.json y CI actuales: usa lint/typecheck/build/test, verificando su existencia antes de ejecutarlos. La API del otro repositorio solo se consume como servicio mediante el contrato disponible, sin leer sus archivos ni administrarlo. Usa una base aislada con datos sintéticos; no migres ni limpies la base local del usuario. Pruebas unitarias con mocks no acreditan API real ni PostgreSQL. Ante fallos, devuelve evidencia al escritor correspondiente y repite las comprobaciones afectadas. Si falta infraestructura, registra pendiente y no cierres como aprobado.
+6. **Documentar y entregar:** los documenters actualizan documentos dentro de cada worktree y contrastan contratos con comportamiento final. Pueden preparar borradores antes, pero la entrega debe reflejar la versión validada. Solo el coordinador edita C:/fintrack/docs y consolida estados/evidencias. Pausa escritores antes de revisar/publicar. El responsable de Git valida diff y checks, prepara rutas explícitas y realiza commit/push únicamente de la feature autorizada según el protocolo. Sin git add global, secretos, force push, merge ni despliegue. Planificación/revisión/no publicar prevalecen.
 
-Database y backend acuerdan persistencia y propiedad de entidades; backend y frontend acuerdan DTO y errores. Paraleliza solo tareas cuyas interfaces y archivos ya esten separados. Si una tarea depende de una decision pendiente, resuelve esa decision antes de avanzar en ella.
+Para cambios pequeños usa solo roles pertinentes y registra por qué una etapa no aplica; no crees todos los agentes por rutina. Para una funcionalidad completa local cubre las etapas del equipo de este repositorio, por turnos.
 
-Cada especialista comunica al coordinador cambios de contrato, dependencias o conflictos antes de modificar archivos ajenos. El coordinador informa al rol afectado y confirma la nueva version del acuerdo. No sobrescribas cambios de otro agente ni abras una segunda implementacion para el mismo archivo.
+## Cierre verificable
 
-Al terminar, cada agente devuelve:
-
-- Resultado y archivos modificados.
-- Contratos consumidos o cambiados y dependencias pendientes.
-- Comandos de verificacion realmente ejecutados y sus resultados.
-- Riesgos o bloqueos concretos que impiden integrar.
-
-## Integracion
-
-El coordinador revisa que request/response y formatos coincidan entre UI, API y persistencia; comprueba autorizacion por usuario y coherencia de migraciones cuando sean parte de la tarea. Ejecuta los chequeos disponibles que correspondan al cambio. Si aun no existe codigo ejecutable, informa esa limitacion sin inventar pruebas.
-
-Un fallo de integracion vuelve al propietario de la capa afectada con evidencia concreta. Evita cambios simultaneos sobre el mismo archivo. Finaliza cuando los criterios de la tarea esten satisfechos o explica exactamente la dependencia externa pendiente.
-
-## Trabajo local
-
-La configuracion compartida .codex y esta skill pueden versionarse por instruccion del usuario. Excluir secretos y ajustes personales; los archivos .env siguen ignorados.
-Respeta el flujo feature -> dev -> qa -> main y los permisos de la sesion. El usuario autoriza crear ramas y hacer commit/push de la feature de implementacion asignada, segun el protocolo C:/fintrack/docs/git-por-feature.md; leelo antes de delegar o publicar. Las instrucciones de solo planificar/revisar/no publicar prevalecen. Merge, despliegue y operaciones destructivas no estan incluidos.
-
-## Git por feature
-
-El coordinador asigna ID, contrato, base/SHA, rama, worktree absoluto, archivos autorizados y responsable unico de Git. Usar worktrees independientes en C:/fintrack/worktrees; no cambiar ramas en las carpetas principales compartidas mientras haya agentes trabajando.
-
-Cada responsable valida el alcance y ejecuta los checks pertinentes antes de preparar rutas explicitas y publicar solo su rama en origin. No incluir cambios ajenos, secretos ni configuracion personal ajena a la entrega. Backend y database comparten un responsable de Git cuando colaboran en la misma feature. Sin permisos o ante un rechazo, devolver bloqueo y comando al coordinador, sin force push.
-
-Los worktrees incluyen esta skill cuando esta versionada en su base; si aun no lo esta, pasar su ruta original al especialista. Los limites de dominio se aplican a las rutas equivalentes dentro del worktree asignado. El coordinador conserva la escritura exclusiva de C:/fintrack/docs y consolida estados/evidencia despues de revisar cada entrega.
+Informa funcionalidad y comportamiento entregado, ramas/worktrees y SHA local/remoto si hubo publicación, pruebas ejecutadas y resultados, documentación y bloqueos concretos. Distingue implementación, revisión, validación local, CI remota y merge. Un fallo o una aceptación pendiente impide declarar completada la funcionalidad. Conserva worktrees para revisión.

@@ -1,22 +1,9 @@
 developer_instructions = """
-Antes de coordinar o participar en trabajo entre agentes, lee y aplica la skill compartida en C:/fintrack/fintrackBackend/.agents/skills/fintrack-collaboration/SKILL.md. El protocolo de colaboracion se mantiene en esa skill.
-
-Coordina FinanTrack usando los agentes frontend, backend y database segun el alcance de la tarea.
-Para tareas simples de un solo dominio, usa solo el especialista necesario o resuelvelas directamente.
-Para cambios que atraviesan capas, delega al especialista correspondiente y acuerda contratos antes de editar.
-Puedes ejecutar en paralelo tareas independientes, con un maximo de tres subagentes simultaneos.
-Entrega a cada especialista el objetivo, repositorio absoluto, archivos propios, contratos, dependencias y criterio de aceptacion.
-Frontend posee React/Vite en fintrackFrontend. Backend posee API y logica NestJS en fintrackBackend.
-Database posee esquema, migraciones, seeds y configuracion PostgreSQL en fintrackBackend.
-Las entidades del ORM, configuracion compartida, documentos y Compose necesitan un unico escritor asignado por ti.
-Orden recomendado: acordar contrato y datos, diseno de persistencia, API y UI; paralelizar solo despues de acordar interfaces.
-El especialista database comunica cambios de persistencia al backend; backend comunica DTO y errores al frontend.
-Consolida los resultados y verifica integracion, validaciones y archivos cambiados antes de dar la tarea por terminada.
-No implementes funcionalidades por el mero hecho de cargar esta configuracion. Actua segun el pedido actual del usuario.
-La configuracion compartida .codex y la skill de colaboracion pueden versionarse sin secretos. La autorizacion del usuario permite crear ramas y hacer commit/push solo de la feature de implementacion asignada, siguiendo C:/fintrack/docs/git-por-feature.md. No incluye merge ni despliegue y no activa el backlog por si sola.
-Asigna worktree por feature y responsable unico de Git; no cambies ramas en las carpetas compartidas del IDE ni publiques dev/qa/main. Conserva cambios ajenos y respeta los permisos efectivos.
-Las rutas hermanas no amplian permisos: solicita acceso cuando el entorno lo requiera.
-Lee docs/architecture.md, docs/integration.md y CONTRIBUTING.md. Informa pruebas realmente ejecutadas y limites reales.
+Coordina las funcionalidades solicitadas mediante la skill .agents/skills/fintrack-collaboration/SKILL.md de este repositorio. Léela antes de delegar y transmite su ruta absoluta a los especialistas.
+El usuario describe el comportamiento deseado; tú delimitas alcance, contrato y aceptación, y activas exclusivamente los roles de backend de este repositorio más database-specialist cuando corresponda.
+La sesión principal coordina únicamente el equipo de este repositorio. No cargues roles del repositorio hermano ni delegues trabajo sobre él. Si la funcionalidad necesita otra capa, entrega su contrato o dependencia pendiente para atenderla en una sesión del repositorio correspondiente. Los especialistas no crean más agentes. Respeta el límite efectivo de la sesión y trabaja por turnos; no actives todos los roles a la vez.
+Aplica AGENTS.md y C:/fintrack/docs/git-por-feature.md: un worktree por feature, un responsable de Git por rama, archivos con escritor único y preservación de cambios ajenos. Solo planificación/revisión no autoriza publicación. No hagas merge ni despliegue.
+No inicies features por cargar la configuración. Respeta permisos efectivos; esta configuración no concede acceso adicional. Informa únicamente validaciones ejecutadas y bloqueos reales.
 """
 
 [agents]

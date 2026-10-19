@@ -1,18 +1,18 @@
 import { Injectable } from '@nestjs/common';
-import { UsersService } from '../users/users.service';
+import { BalanceService } from '../transactions/balance.service';
 import { resolvePeriod } from './period';
 
 @Injectable()
 export class DashboardService {
-  constructor(private readonly users: UsersService) {}
+  constructor(private readonly balances: BalanceService) {}
   async getForUser(userId: string, query: Record<string, unknown>) {
     const asOf = new Date();
     const period = resolvePeriod(query, asOf);
-    const user = await this.users.requireUser(userId);
+    const balance = await this.balances.getForUser(userId, asOf);
     return {
-      period, currency: user.currency, asOf: asOf.toISOString(),
+      period, currency: balance.currency, asOf: asOf.toISOString(),
       sections: {
-        balance: { status: 'notAvailable' }, monthlySummary: { status: 'notAvailable' },
+        balance: { status: 'ready', data: { amount: balance.amount, cutoff: balance.cutoff } }, monthlySummary: { status: 'notAvailable' },
         expenseDistribution: { status: 'notAvailable' }, budgets: { status: 'notAvailable' }, savingsGoals: { status: 'notAvailable' },
       },
     };

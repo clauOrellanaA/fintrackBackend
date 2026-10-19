@@ -10,6 +10,8 @@ const { TransactionsService } = require('../dist/modules/transactions/transactio
 const { tokenHash, AuthService } = require('../dist/modules/auth/auth.service');
 const { BalanceService } = require('../dist/modules/transactions/balance.service');
 const { SavingsReservationReader } = require('../dist/modules/transactions/savings-reservation.reader');
+const { MonthlySummaryService } = require('../dist/modules/transactions/monthly-summary.service');
+const { resolvePeriod } = require('../dist/modules/dashboard/period');
 
 // This is an explicit integration suite: missing dedicated DB configuration fails, never skips.
 const password = 'local-test-password-only';
@@ -93,7 +95,7 @@ test('HTTP guard rejects missing/malformed/expired/revoked session before valida
   assert.equal((await fetch(`${base}/dashboard`, { headers: auth(revoked) })).status, 401);
 });
 
-test('authenticated dashboard validates query and serves only the implemented balance section', async () => {
+test('authenticated dashboard validates query and serves the implemented balance and summary sections', async () => {
   const token = await accessToken();
   for (const query of ['month=2026-13', 'month=2026-01&month=2026-02', `userId=${users[1].id}`, 'month=9999-01']) {
     const response = await fetch(`${base}/dashboard?${query}`, { headers: auth(token) });
@@ -110,7 +112,8 @@ test('authenticated dashboard validates query and serves only the implemented ba
     assert.equal(body.sections.balance.status, 'ready');
     assert.equal(body.sections.balance.data.amount, email === SEED_EMAILS[0] ? '2500.05' : '859.50');
     assert.equal(body.sections.balance.data.cutoff, body.asOf);
-    assert.ok(Object.entries(body.sections).filter(([name]) => name !== 'balance').every(([, section]) => section.status === 'notAvailable' && !('data' in section)));
+    assert.deepEqual(body.sections.monthlySummary, { status: 'ready', data: { income: '0.00', expense: email === SEED_EMAILS[0] ? '500.05' : '40.50' } });
+    assert.ok(Object.entries(body.sections).filter(([name]) => !['balance', 'monthlySummary'].includes(name)).every(([, section]) => section.status === 'notAvailable' && !('data' in section)));
     assert.ok(!JSON.stringify(body).includes(users[0].id));
   }
 });
@@ -227,6 +230,96 @@ test('reservation extension subtracts once in the same snapshot and propagates f
     assert.ok(!JSON.stringify(body).includes('private details'));
     assert.ok(!('sections' in body));
   } finally { reader.reservedMinorUnits = original; }
+});
+
+test('monthly summary uses half-open IANA month boundaries through year, leap and historical offsets', async () => {
+  const service = app.get(MonthlySummaryService);
+  for (const month of ['2026-12', '2024-02', '1900-01']) {
+    const period = resolvePeriod({ month }, new Date());
+    const start = new Date(period.start).getTime();
+    const end = new Date(period.endExclusive).getTime();
+    const fixture = await balanceFixture('0.00', [
+      { amount: '900.00', at: new Date(start - 1).toISOString() },
+      { amount: '0.10', at: period.start },
+      { type: 'expense', amount: '0.20', at: new Date(end - 1).toISOString() },
+      { amount: '800.00', at: period.endExclusive },
+      { amount: '700.00', status: 'void', at: period.start },
+    ], '1800-01-01T00:00:00Z');
+    assert.deepEqual(await service.getForUser(fixture.userId, period), { income: '0.10', expense: '0.20' });
+  }
+});
+
+test('monthly HTTP isolates users, returns successful empty zeros and includes future posted within selected period independently of balance', async () => {
+  const fixture = await balanceFixture('25.00', [
+    { amount: '20.10', at: '2100-03-15T12:00:00Z' },
+    { type: 'expense', amount: '30.20', at: '2100-03-16T12:00:00Z' },
+    { amount: '999.00', status: 'void', at: '2100-03-17T12:00:00Z' },
+  ]);
+  await balanceFixture('0.00', [{ amount: '999.99', at: '2100-03-15T12:00:00Z' }]);
+  const token = await accessToken(fixture.email);
+  for (const [month, expected] of [['2100-03', { income: '20.10', expense: '30.20' }], ['2100-04', { income: '0.00', expense: '0.00' }]]) {
+    const response = await fetch(`${base}/dashboard?month=${month}`, { headers: auth(token) });
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.deepEqual(body.sections.monthlySummary, { status: 'ready', data: expected });
+    assert.equal(body.sections.balance.data.amount, '25.00');
+    assert.equal(body.sections.balance.data.cutoff, body.asOf);
+  }
+});
+
+test('monthly summary preserves gross refunds, exact maxima and rejects overflowing totals even when balance nets to zero', async () => {
+  const fixture = await balanceFixture('0.00');
+  const expenseId = randomUUID();
+  await source.query('INSERT INTO transactions(id,user_id,type,status,amount,currency,occurred_at) VALUES($1,$2,\'expense\',\'posted\',\'10.25\',\'BOB\',\'2026-10-01T12:00:00Z\')', [expenseId, fixture.userId]);
+  await source.query('INSERT INTO transactions(id,user_id,type,status,amount,currency,occurred_at,refund_of_id) VALUES($1,$2,\'income\',\'posted\',\'2.05\',\'BOB\',\'2026-10-02T12:00:00Z\',$3)', [randomUUID(), fixture.userId, expenseId]);
+  const service = app.get(MonthlySummaryService);
+  const period = resolvePeriod({ month: '2026-10' }, new Date());
+  assert.deepEqual(await service.getForUser(fixture.userId, period), { income: '2.05', expense: '10.25' });
+  const large = await balanceFixture('0.00', [{ amount: '999999999999.99', at: '2026-10-01T12:00:00Z' }, { type: 'expense', amount: '999999999999.99', at: '2026-10-01T12:00:00Z' }]);
+  assert.deepEqual(await service.getForUser(large.userId, period), { income: '999999999999.99', expense: '999999999999.99' });
+  await source.query('INSERT INTO transactions(id,user_id,type,status,amount,currency,occurred_at) VALUES($1,$2,\'income\',\'posted\',\'0.01\',\'BOB\',\'2026-10-01T12:00:00Z\'),($3,$2,\'expense\',\'posted\',\'0.01\',\'BOB\',\'2026-10-01T12:00:00Z\')', [randomUUID(), large.userId, randomUUID()]);
+  const response = await fetch(`${base}/dashboard?month=2026-10`, { headers: auth(await accessToken(large.email)) });
+  assert.equal(response.status, 422);
+  assert.equal((await response.json()).error.code, 'DATA_OUT_OF_RANGE');
+});
+
+test('dashboard shares one snapshot despite concurrent writes and aborts summary failures without partial balance or synthetic zeros', async () => {
+  const fixture = await balanceFixture('0.00', [{ amount: '10.00', at: '2026-10-01T12:00:00Z' }]);
+  const reader = app.get(SavingsReservationReader);
+  const summaries = app.get(MonthlySummaryService);
+  const originalReader = reader.reservedMinorUnits;
+  const originalSummary = summaries.getForUser;
+  let reservationManager;
+  try {
+    reader.reservedMinorUnits = async (_userId, _asOf, manager) => {
+      reservationManager = manager;
+      await source.query('INSERT INTO transactions(id,user_id,type,status,amount,currency,occurred_at) VALUES($1,$2,\'expense\',\'posted\',\'2.00\',\'BOB\',\'2026-10-02T12:00:00Z\')', [randomUUID(), fixture.userId]);
+      return 0n;
+    };
+    summaries.getForUser = async function(userId, period, manager) {
+      assert.equal(manager, reservationManager);
+      assert.equal(manager.queryRunner.transactionDepth, 1);
+      return originalSummary.call(this, userId, period, manager);
+    };
+    const token = await accessToken(fixture.email);
+    const response = await fetch(`${base}/dashboard?month=2026-10`, { headers: auth(token) });
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.sections.balance.data.amount, '10.00');
+    assert.deepEqual(body.sections.monthlySummary.data, { income: '10.00', expense: '0.00' });
+    reader.reservedMinorUnits = originalReader;
+    summaries.getForUser = originalSummary;
+    const next = await (await fetch(`${base}/dashboard?month=2026-10`, { headers: auth(token) })).json();
+    assert.equal(next.sections.balance.data.amount, '8.00');
+    assert.equal(next.sections.monthlySummary.data.expense, '2.00');
+    summaries.getForUser = async () => { throw Object.assign(new Error('private SQL details'), { code: 'ECONNRESET' }); };
+    const failed = await fetch(`${base}/dashboard?month=2026-10`, { headers: auth(token) });
+    assert.equal(failed.status, 503);
+    const error = await failed.json();
+    assert.equal(error.error.code, 'DATA_UNAVAILABLE');
+    assert.ok(!('sections' in error));
+    assert.ok(!JSON.stringify(error).includes('private SQL details'));
+  } finally { reader.reservedMinorUnits = originalReader; summaries.getForUser = originalSummary; }
 });
 
 test('seed denies production and migration can roll back and reapply on its own empty database', async () => {

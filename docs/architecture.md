@@ -13,10 +13,10 @@
 
 Frontend: app contiene composicion, rutas y proveedores; features contiene paginas, componentes, hooks, tipos y acceso a API de cada dominio; shared contiene piezas reutilizables sin logica propia de una feature.
 
-Backend: modules contiene cada dominio; sus controladores, servicios y modulos NestJS se agregaran al implementar. dto contiene contratos de entrada y entities modelos del dominio. config concentra configuracion; database agrupa migraciones y seeds. El ORM queda pendiente de seleccion.
+Backend: modules contiene dominios NestJS; auth, users, transactions y dashboard tienen implementacion minima BE-01. entities conserva modelos TypeORM; config concentra configuracion y database agrupa DataSource, migraciones y seed. TypeORM 0.3.31 usa PostgreSQL con migraciones explicitas y synchronize=false. Los servicios publicos de dominio separan composicion dashboard de persistencia.
 
 Las features no deben depender de detalles internos de otras features. Las operaciones financieras, validaciones y autorizacion pertenecen al backend. Toda consulta financiera debe restringirse al usuario autenticado. Las contrasenas se almacenaran con hash seguro en el backend.
 
-El dinero se representara mediante decimales exactos en PostgreSQL y un contrato JSON explicito, evitando calculos monetarios con punto flotante. Moneda, zona horaria y reglas de redondeo se definiran antes de implementar.
+El dinero usa decimales exactos en PostgreSQL y contrato JSON explicito, evitando calculos monetarios con punto flotante. Moneda BOB, escala 2, zona America/La_Paz y reglas de redondeo estan aprobadas en dashboard-contract.md.
 
-No hay autenticacion, autorizacion ni reglas financieras implementadas en esta etapa.
+Hay autenticacion mediante sesiones bearer opacas revocables y expirables, con scrypt para passwords; identidad obtenida del guard, nunca del navegador. Hay restricciones financieras minimas de integridad y consultas por propietario. Las formulas de saldo, resumen, distribucion, presupuestos y metas aun no estan implementadas. Ver contrato BE-00 y evidencia BE-01.

@@ -2,7 +2,7 @@
 
 ## Estado de arranque local
 
-Las aplicaciones ya tienen scripts y dependencias. Consultar el [README](../README.md) para `npm ci`, `npm run setup` y los comandos de inicio. El frontend comprueba `/api/v1/health`; `/api/v1/health/ready` verifica PostgreSQL. Estas rutas no implementan autenticacion ni datos financieros. El backend utiliza `pg` para la comprobacion; el ORM de negocio sigue pendiente.
+Las aplicaciones tienen scripts y dependencias. Consultar el [README](../README.md) para `npm ci`, `npm run setup`, migraciones, seed y comandos de inicio. El frontend comprueba `/api/v1/health`; `/api/v1/health/ready` verifica PostgreSQL mediante `pg`. Estas rutas no sustituyen autenticacion ni persistencia TypeORM, implementadas en BE-01.
 
 Navegador React (localhost:5173) -> HTTP/JSON -> API NestJS (localhost:3000/api/v1) -> PostgreSQL (localhost:5432).
 
@@ -14,4 +14,4 @@ La composicion Docker reside en fintrackBackend/compose.yaml. Incluye solo Postg
 
 Las aplicaciones se ejecutan localmente con npm. Para contenerizarlas en una etapa posterior, agregar Dockerfiles y servicios frontend/backend al mismo Compose. Dentro de Docker, el backend usara database:5432; el navegador seguira usando una URL accesible desde el host para la API.
 
-Pendiente de implementacion: contrato OpenAPI versionado, endpoints de negocio, esquema y migraciones, ORM, mecanismo de sesion, manejo de errores de dominio, paginacion y pruebas de integracion. Las carpetas de features no implican reglas financieras implementadas.
+Contrato aprobado en [dashboard-contract](dashboard-contract.md) y [OpenAPI v1](openapi/dashboard.v1.json). BE-01 incluye login/logout, sesiones bearer opacas sin cookies, guard, esquema/migracion y seed. Dashboard valida mes en America/La_Paz y devuelve secciones notAvailable hasta sus features. Frontend debe manejar ese estado sin mostrar ceros. Errores usan envelope error.code/message sin SQL ni secretos; respuestas privadas no-store. Hay pruebas HTTP/PostgreSQL reales de acceso e integridad. Siguen pendientes consultas/calculos BE-02 a BE-06, CRUD completos y paginacion de futuras listas publicas.

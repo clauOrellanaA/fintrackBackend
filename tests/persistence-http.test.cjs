@@ -8,6 +8,8 @@ const { User } = require('../dist/modules/users/entities/user.entity');
 const { Session } = require('../dist/modules/auth/entities/session.entity');
 const { TransactionsService } = require('../dist/modules/transactions/transactions.service');
 const { tokenHash, AuthService } = require('../dist/modules/auth/auth.service');
+const { BalanceService } = require('../dist/modules/transactions/balance.service');
+const { SavingsReservationReader } = require('../dist/modules/transactions/savings-reservation.reader');
 
 // This is an explicit integration suite: missing dedicated DB configuration fails, never skips.
 const password = 'local-test-password-only';
@@ -91,7 +93,7 @@ test('HTTP guard rejects missing/malformed/expired/revoked session before valida
   assert.equal((await fetch(`${base}/dashboard`, { headers: auth(revoked) })).status, 401);
 });
 
-test('authenticated dashboard validates query and advertises unavailable sections without fake finances', async () => {
+test('authenticated dashboard validates query and serves only the implemented balance section', async () => {
   const token = await accessToken();
   for (const query of ['month=2026-13', 'month=2026-01&month=2026-02', `userId=${users[1].id}`, 'month=9999-01']) {
     const response = await fetch(`${base}/dashboard?${query}`, { headers: auth(token) });
@@ -105,7 +107,10 @@ test('authenticated dashboard validates query and advertises unavailable section
     const body = await response.json();
     assert.equal(body.period.start, '2026-10-01T04:00:00.000Z');
     assert.equal(body.currency, 'BOB');
-    assert.ok(Object.values(body.sections).every(section => section.status === 'notAvailable' && !('data' in section)));
+    assert.equal(body.sections.balance.status, 'ready');
+    assert.equal(body.sections.balance.data.amount, email === SEED_EMAILS[0] ? '2500.05' : '859.50');
+    assert.equal(body.sections.balance.data.cutoff, body.asOf);
+    assert.ok(Object.entries(body.sections).filter(([name]) => name !== 'balance').every(([, section]) => section.status === 'notAvailable' && !('data' in section)));
     assert.ok(!JSON.stringify(body).includes(users[0].id));
   }
 });
@@ -140,9 +145,93 @@ test('schema rejects cross-user categories/refunds, bad decimals, invalid openin
   await source.query('DELETE FROM transactions WHERE id=$1', [refundId]);
 });
 
+async function balanceFixture(opening, movements = [], openingAt = '2000-01-01T00:00:00Z') {
+  const userId = randomUUID();
+  const email = `${userId}@fintrack.test`;
+  const [{ password_hash }] = await source.query('SELECT password_hash FROM users WHERE id=$1', [users[0].id]);
+  await source.getRepository(User).insert({ id: userId, email, passwordHash: password_hash, openingBalance: opening, openingAt: new Date(openingAt), currency: 'BOB' });
+  for (const item of movements) {
+    await source.query('INSERT INTO transactions(id,user_id,type,status,amount,currency,occurred_at) VALUES($1,$2,$3,$4,$5,\'BOB\',$6)',
+      [randomUUID(), userId, item.type ?? 'income', item.status ?? 'posted', item.amount, item.at ?? '2026-09-01T12:00:00Z']);
+  }
+  return { userId, email };
+}
+
+test('balance accumulates opening and previous months, filters void/future, includes cutoff and isolates owners', async () => {
+  const asOf = new Date('2026-10-19T12:00:00Z');
+  const fixture = await balanceFixture('1000.00', [
+    { amount: '2000.10' }, { type: 'expense', amount: '500.05', at: '2026-10-05T12:00:00Z' },
+    { amount: '0.03', at: asOf.toISOString() }, { amount: '999.00', status: 'void' },
+    { type: 'expense', amount: '999.00', at: '2026-10-19T12:00:00.001Z' },
+    { amount: '12345.00', at: '2100-01-01T00:00:00Z' },
+  ]);
+  const service = app.get(BalanceService);
+  const result = await service.getForUser(fixture.userId, asOf);
+  assert.deepEqual(result, { amount: '2500.08', currency: 'BOB', cutoff: asOf.toISOString() });
+  await balanceFixture('999999999999.99', [{ amount: '888888888888.88' }]);
+  assert.deepEqual(await service.getForUser(fixture.userId, asOf), result);
+  // HTTP current cutoff differs intentionally from deterministic service cutoff.
+  const token = await accessToken(fixture.email);
+  const results = [];
+  for (const month of ['2000-01', '2026-10']) {
+    const response = await fetch(`${base}/dashboard?month=${month}`, { headers: auth(token) });
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.sections.balance.data.cutoff, body.asOf);
+    results.push(body.sections.balance.data.amount);
+  }
+  assert.equal(results[0], results[1]);
+});
+
+test('balance preserves explicit openings, negative/fractional and maximum precision, rejects missing/future opening and overflow', async () => {
+  const asOf = new Date('2026-10-19T12:00:00Z');
+  const service = app.get(BalanceService);
+  for (const [opening, movements, expected] of [
+    ['42.5', [], '42.50'], ['0.00', [], '0.00'], ['-0.10', [{ type: 'expense', amount: '0.20' }], '-0.30'],
+    ['999999999999.98', [{ amount: '0.01' }], '999999999999.99'],
+    ['-999999999999.98', [{ type: 'expense', amount: '0.01' }], '-999999999999.99'],
+  ]) {
+    const fixture = await balanceFixture(opening, movements);
+    assert.equal((await service.getForUser(fixture.userId, asOf)).amount, expected);
+  }
+  await assert.rejects(service.getForUser(randomUUID(), asOf), error => error.getStatus() === 401);
+  const futureOpening = await balanceFixture('0.00', [], '2100-01-01T00:00:00Z');
+  await assert.rejects(service.getForUser(futureOpening.userId, asOf), error => error.getResponse().error.code === 'DATA_INTEGRITY_ERROR');
+  const overflow = await balanceFixture('999999999999.99', [{ amount: '0.01' }]);
+  const response = await fetch(`${base}/dashboard`, { headers: auth(await accessToken(overflow.email)) });
+  assert.equal(response.status, 422);
+  const body = await response.json();
+  assert.equal(body.error.code, 'DATA_OUT_OF_RANGE');
+  assert.ok(!('sections' in body));
+});
+
+test('reservation extension subtracts once in the same snapshot and propagates failures without zeros', async () => {
+  const fixture = await balanceFixture('100.00');
+  const reader = app.get(SavingsReservationReader);
+  const original = reader.reservedMinorUnits;
+  const asOf = new Date('2026-10-19T12:00:00Z');
+  try {
+    reader.reservedMinorUnits = async (userId, cutoff, manager) => {
+      assert.equal(userId, fixture.userId);
+      assert.equal(cutoff, asOf);
+      assert.equal(manager.queryRunner.isTransactionActive, true);
+      assert.equal((await manager.query('SHOW transaction_isolation'))[0].transaction_isolation, 'repeatable read');
+      return 8000n;
+    };
+    assert.equal((await app.get(BalanceService).getForUser(fixture.userId, asOf)).amount, '20.00');
+    reader.reservedMinorUnits = async () => { throw Object.assign(new Error('adapter failure: private details'), { code: 'ECONNRESET' }); };
+    const response = await fetch(`${base}/dashboard`, { headers: auth(await accessToken(fixture.email)) });
+    assert.equal(response.status, 503);
+    const body = await response.json();
+    assert.equal(body.error.code, 'DATA_UNAVAILABLE');
+    assert.ok(!JSON.stringify(body).includes('private details'));
+    assert.ok(!('sections' in body));
+  } finally { reader.reservedMinorUnits = original; }
+});
+
 test('seed denies production and migration can roll back and reapply on its own empty database', async () => {
   await assert.rejects(seedDevelopment(source, password, 'production'));
-  assert.equal(await source.getRepository(User).count(), 2);
+  assert.ok(await source.getRepository(User).count() >= 2);
   await app.close(); app = undefined;
   await source.undoLastMigration();
   assert.equal((await source.query("SELECT to_regclass('public.users') AS name"))[0].name, null);

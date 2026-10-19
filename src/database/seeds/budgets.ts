@@ -1,14 +1,8 @@
-import { createHash } from 'node:crypto';
 import type { EntityManager } from 'typeorm';
 import { Budget } from '../../modules/budgets/entities/budget.entity';
 import { Category } from '../../modules/transactions/entities/category.entity';
 import { Transaction } from '../../modules/transactions/entities/transaction.entity';
-
-function demoId(userId: string, label: string): string {
-  const hex = createHash('sha256').update(`fintrack-be05:${userId}:${label}`).digest('hex');
-  // Custom deterministic UUIDv8: identifiers only, not credentials.
-  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-8${hex.slice(13, 16)}-a${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
-}
+import { demoId } from './demo-id';
 
 export async function seedBudgets(manager: EntityManager, userId: string, secondUser: boolean) {
   const cases = [

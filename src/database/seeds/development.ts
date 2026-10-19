@@ -7,6 +7,7 @@ import { Category } from '../../modules/transactions/entities/category.entity';
 import { Transaction } from '../../modules/transactions/entities/transaction.entity';
 import { hashPassword } from '../../modules/auth/password';
 import { seedBudgets } from './budgets';
+import { seedSavingsGoals } from './savings-goals';
 
 export const SEED_EMAILS = ['alice@fintrack.test', 'bob@fintrack.test'] as const;
 
@@ -30,6 +31,7 @@ export async function seedDevelopment(source: DataSource, password: string, envi
         ]);
       }
       await seedBudgets(manager, userId, i === 1);
+      await seedSavingsGoals(manager, userId, i === 1);
     }
   });
 }

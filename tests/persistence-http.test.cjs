@@ -12,6 +12,9 @@ const { BalanceService } = require('../dist/modules/transactions/balance.service
 const { SavingsReservationReader } = require('../dist/modules/transactions/savings-reservation.reader');
 const { MonthlySummaryService } = require('../dist/modules/transactions/monthly-summary.service');
 const { resolvePeriod } = require('../dist/modules/dashboard/period');
+const { ExpenseDistributionService } = require('../dist/modules/transactions/expense-distribution.service');
+const { decimalToMinorUnits } = require('../dist/shared/money');
+const { percentageOf } = require('../dist/shared/percentage');
 
 // This is an explicit integration suite: missing dedicated DB configuration fails, never skips.
 const password = 'local-test-password-only';
@@ -95,7 +98,7 @@ test('HTTP guard rejects missing/malformed/expired/revoked session before valida
   assert.equal((await fetch(`${base}/dashboard`, { headers: auth(revoked) })).status, 401);
 });
 
-test('authenticated dashboard validates query and serves the implemented balance and summary sections', async () => {
+test('authenticated dashboard validates query and serves balance, summary and expense distribution', async () => {
   const token = await accessToken();
   for (const query of ['month=2026-13', 'month=2026-01&month=2026-02', `userId=${users[1].id}`, 'month=9999-01']) {
     const response = await fetch(`${base}/dashboard?${query}`, { headers: auth(token) });
@@ -113,7 +116,13 @@ test('authenticated dashboard validates query and serves the implemented balance
     assert.equal(body.sections.balance.data.amount, email === SEED_EMAILS[0] ? '2500.05' : '859.50');
     assert.equal(body.sections.balance.data.cutoff, body.asOf);
     assert.deepEqual(body.sections.monthlySummary, { status: 'ready', data: { income: '0.00', expense: email === SEED_EMAILS[0] ? '500.05' : '40.50' } });
-    assert.ok(Object.entries(body.sections).filter(([name]) => !['balance', 'monthlySummary'].includes(name)).every(([, section]) => section.status === 'notAvailable' && !('data' in section)));
+    const distribution = body.sections.expenseDistribution;
+    assert.equal(distribution.status, 'ready');
+    assert.equal(distribution.data.length, 1);
+    assert.equal(distribution.data[0].amount, body.sections.monthlySummary.data.expense);
+    assert.equal(distribution.data[0].percentage, '100.00');
+    assert.equal(distribution.data[0].categoryName, email === SEED_EMAILS[0] ? 'Alimentacion' : 'Transporte');
+    assert.ok(Object.entries(body.sections).filter(([name]) => !['balance', 'monthlySummary', 'expenseDistribution'].includes(name)).every(([, section]) => section.status === 'notAvailable' && !('data' in section)));
     assert.ok(!JSON.stringify(body).includes(users[0].id));
   }
 });
@@ -320,6 +329,123 @@ test('dashboard shares one snapshot despite concurrent writes and aborts summary
     assert.ok(!('sections' in error));
     assert.ok(!JSON.stringify(error).includes('private SQL details'));
   } finally { reader.reservedMinorUnits = originalReader; summaries.getForUser = originalSummary; }
+});
+
+async function distributionFixture(groups) {
+  const fixture = await balanceFixture('0.00');
+  for (const group of groups) {
+    const categoryId = group.id === null ? null : (group.id ?? randomUUID());
+    if (categoryId) await source.query('INSERT INTO categories(id,user_id,name) VALUES($1,$2,$3)', [categoryId, fixture.userId, group.name ?? categoryId]);
+    for (const amount of group.amounts ?? [group.amount]) {
+      await source.query('INSERT INTO transactions(id,user_id,category_id,type,status,amount,currency,occurred_at) VALUES($1,$2,$3,\'expense\',\'posted\',$4,\'BOB\',\'2026-10-05T12:00:00Z\')', [randomUUID(), fixture.userId, categoryId, amount]);
+    }
+  }
+  return fixture;
+}
+
+test('expense distribution handles empty, income-only, single and equal categories including null and long names in stable order', async () => {
+  const service = app.get(ExpenseDistributionService);
+  const period = resolvePeriod({ month: '2026-10' }, new Date());
+  const empty = await balanceFixture('0.00', [{ amount: '5.00', at: '2026-10-01T12:00:00Z' }]);
+  assert.deepEqual(await service.getForUser(empty.userId, period), []);
+  await assert.rejects(service.getForUser(randomUUID(), period), error => error.getStatus() === 401);
+  const single = await distributionFixture([{ id: null, amount: '20.10' }]);
+  assert.deepEqual(await service.getForUser(single.userId, period), [{ categoryId: null, categoryName: 'Sin categoria', amount: '20.10', percentage: '100.00' }]);
+  const first = '00000000-0000-4000-8000-000000000001';
+  const second = '00000000-0000-4000-8000-000000000002';
+  const fixture = await distributionFixture([{ id: second, name: 'Z'.repeat(100), amount: '1.00' }, { id: null, amount: '1.00' }, { id: first, name: 'A', amounts: ['0.40', '0.60'] }]);
+  const response = await fetch(`${base}/dashboard?month=2026-10`, { headers: auth(await accessToken(fixture.email)) });
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  const distribution = body.sections.expenseDistribution.data;
+  assert.deepEqual(distribution.map(row => row.categoryId), [first, second, null]);
+  assert.equal(distribution[1].categoryName.length, 100);
+  assert.deepEqual(distribution.map(row => row.percentage), ['33.33', '33.33', '33.33']);
+  const sum = distribution.reduce((total, row) => total + decimalToMinorUnits(row.amount), 0n);
+  assert.equal(sum, decimalToMinorUnits(body.sections.monthlySummary.data.expense));
+  const roundedSum = distribution.reduce((total, row) => total + decimalToMinorUnits(row.percentage), 0n);
+  assert.equal(roundedSum, 9999n); // No artificial adjustment to force 100%.
+  assert.ok((10000n - roundedSum) * 2n <= BigInt(distribution.length));
+});
+
+test('distribution percentages use exact HALF_UP independently, preserve amount order, extremes and aggregate overflow', async () => {
+  const service = app.get(ExpenseDistributionService);
+  const period = resolvePeriod({ month: '2026-10' }, new Date());
+  const half = await distributionFixture([{ name: 'small', amount: '1.00' }, { name: 'large', amount: '31.00' }]);
+  const rounded = await service.getForUser(half.userId, period);
+  assert.deepEqual(rounded.map(row => row.amount), ['31.00', '1.00']);
+  assert.deepEqual(rounded.map(row => row.percentage), ['96.88', '3.13']);
+  assert.equal(percentageOf(1n, 3n), '33.33'); // Odd denominator.
+  assert.equal(percentageOf(1n, 32n), '3.13'); // Exact half.
+  assert.equal(percentageOf(0n, 1n), '0.00');
+  assert.throws(() => percentageOf(0n, 0n));
+  const maximum = await distributionFixture([{ name: 'large', amount: '999999999999.98' }, { name: 'small', amount: '0.01' }]);
+  const extremes = await service.getForUser(maximum.userId, period);
+  assert.deepEqual(extremes.map(row => row.amount), ['999999999999.98', '0.01']);
+  assert.deepEqual(extremes.map(row => row.percentage), ['100.00', '0.00']);
+  const overflow = await distributionFixture([{ amount: '999999999999.99' }, { amount: '0.01' }]);
+  await assert.rejects(service.getForUser(overflow.userId, period), error => error.getStatus() === 422 && error.getResponse().error.code === 'DATA_OUT_OF_RANGE');
+});
+
+test('distribution shares monthly filters including IANA boundaries, future posted, void exclusion and ownership', async () => {
+  const fixture = await balanceFixture('0.00', [
+    { type: 'expense', amount: '1.10', at: '2100-03-01T04:00:00Z' },
+    { type: 'expense', amount: '2.20', at: '2100-04-01T03:59:59.999Z' },
+    { type: 'expense', amount: '999.00', at: '2100-03-01T03:59:59.999Z' },
+    { type: 'expense', amount: '888.00', at: '2100-04-01T04:00:00Z' },
+    { type: 'expense', amount: '777.00', status: 'void', at: '2100-03-10T12:00:00Z' },
+    { amount: '666.00', at: '2100-03-10T12:00:00Z' },
+  ]);
+  await balanceFixture('0.00', [{ type: 'expense', amount: '555.00', at: '2100-03-10T12:00:00Z' }]);
+  const token = await accessToken(fixture.email);
+  const response = await fetch(`${base}/dashboard?month=2100-03`, { headers: auth(token) });
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.equal(body.sections.balance.data.amount, '0.00');
+  assert.equal(body.sections.monthlySummary.data.expense, '3.30');
+  assert.deepEqual(body.sections.expenseDistribution.data, [{ categoryId: null, categoryName: 'Sin categoria', amount: '3.30', percentage: '100.00' }]);
+  const empty = await (await fetch(`${base}/dashboard?month=2100-05`, { headers: auth(token) })).json();
+  assert.deepEqual(empty.sections.expenseDistribution.data, []);
+});
+
+test('distribution and summary retain same snapshot across concurrent commit, and distribution failure aborts all sections', async () => {
+  const fixture = await distributionFixture([{ id: null, amount: '10.00' }]);
+  const summaries = app.get(MonthlySummaryService);
+  const distributions = app.get(ExpenseDistributionService);
+  const originalSummary = summaries.getForUser;
+  const originalDistribution = distributions.getForUser;
+  let summaryManager;
+  try {
+    summaries.getForUser = async function(userId, period, manager) {
+      summaryManager = manager;
+      const result = await originalSummary.call(this, userId, period, manager);
+      await source.query('INSERT INTO transactions(id,user_id,type,status,amount,currency,occurred_at) VALUES($1,$2,\'expense\',\'posted\',\'2.00\',\'BOB\',\'2026-10-06T12:00:00Z\')', [randomUUID(), fixture.userId]);
+      return result;
+    };
+    distributions.getForUser = async function(userId, period, manager) {
+      assert.equal(manager, summaryManager);
+      assert.equal(manager.queryRunner.transactionDepth, 1);
+      return originalDistribution.call(this, userId, period, manager);
+    };
+    const token = await accessToken(fixture.email);
+    const response = await fetch(`${base}/dashboard?month=2026-10`, { headers: auth(token) });
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.sections.monthlySummary.data.expense, '10.00');
+    assert.equal(body.sections.expenseDistribution.data[0].amount, '10.00');
+    summaries.getForUser = originalSummary;
+    distributions.getForUser = originalDistribution;
+    const next = await (await fetch(`${base}/dashboard?month=2026-10`, { headers: auth(token) })).json();
+    assert.equal(next.sections.monthlySummary.data.expense, '12.00');
+    assert.equal(next.sections.expenseDistribution.data[0].amount, '12.00');
+    distributions.getForUser = async () => { throw Object.assign(new Error('private SQL details'), { code: 'ECONNRESET' }); };
+    const failed = await fetch(`${base}/dashboard?month=2026-10`, { headers: auth(token) });
+    assert.equal(failed.status, 503);
+    const error = await failed.json();
+    assert.equal(error.error.code, 'DATA_UNAVAILABLE');
+    assert.ok(!('sections' in error));
+    assert.ok(!JSON.stringify(error).includes('private SQL details'));
+  } finally { summaries.getForUser = originalSummary; distributions.getForUser = originalDistribution; }
 });
 
 test('seed denies production and migration can roll back and reapply on its own empty database', async () => {

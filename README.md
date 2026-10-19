@@ -6,7 +6,7 @@ Equipo **Cosa1ycosa2**: Luciana Salinas y Claudia Orellana.
 
 ## Estado
 
-BE-01 implementa TypeORM/PostgreSQL, migracion de usuarios, sesiones, categorias y movimientos, login/logout y dashboard protegido con validacion de mes. BE-02 agrega saldo exacto acumulado con moneda y corte; BE-03 agrega ingresos y gastos mensuales separados. Las otras tres secciones siguen `notAvailable` hasta BE-04 a BE-06. El health check `pg` sigue independiente de la persistencia ORM.
+BE-01 implementa TypeORM/PostgreSQL, migracion de usuarios, sesiones, categorias y movimientos, login/logout y dashboard protegido con validacion de mes. BE-02 agrega saldo exacto acumulado con moneda y corte; BE-03 agrega ingresos y gastos mensuales separados; BE-04 agrega distribucion de gastos por categoria con importes y porcentajes exactos. Presupuestos y metas siguen `notAvailable` hasta BE-05/BE-06. El health check `pg` sigue independiente de la persistencia ORM.
 
 ## Desarrollo local
 
@@ -54,7 +54,7 @@ $env:TEST_DATABASE_URL = 'postgresql://fintrack_test:isolated-test-only@127.0.0.
 npm test
 ```
 
-Esperar a que PostgreSQL acepte conexiones antes de ejecutar la suite. CI usa un servicio PostgreSQL 17 dedicado y ejecuta los mismos tests junto a npm ci, lint, tipos y build. La suite incluye saldo BE-02 y resumen BE-03; calculos BE-04 a BE-06 quedan pendientes. Ver [evidencia BE-02](docs/be-02-delivery.md) y [BE-03](docs/be-03-delivery.md) para casos y extension obligatoria de reservas en BE-06.
+Esperar a que PostgreSQL acepte conexiones antes de ejecutar la suite. CI usa un servicio PostgreSQL 17 dedicado y ejecuta los mismos tests junto a npm ci, lint, tipos y build. La suite incluye saldo BE-02, resumen BE-03 y distribucion BE-04; calculos BE-05/BE-06 quedan pendientes. Ver evidencias [BE-02](docs/be-02-delivery.md), [BE-03](docs/be-03-delivery.md) y [BE-04](docs/be-04-delivery.md) para casos y extension obligatoria de reservas en BE-06.
 
 ## Arquitectura
 

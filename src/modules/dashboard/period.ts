@@ -1,7 +1,8 @@
 import { BadRequestException } from '@nestjs/common';
 import { DateTime } from 'luxon';
 
-export const PRODUCT_TIME_ZONE = 'America/La_Paz';
+import { PRODUCT_TIME_ZONE } from '../../shared/product-time';
+export { PRODUCT_TIME_ZONE } from '../../shared/product-time';
 
 export function resolvePeriod(query: Record<string, unknown>, asOf: Date) {
   if (Object.keys(query).some(key => key !== 'month') || (query.month !== undefined && typeof query.month !== 'string')) {

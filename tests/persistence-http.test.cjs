@@ -19,6 +19,10 @@ const { progressPercentage } = require('../dist/shared/percentage');
 const { Budget } = require('../dist/modules/budgets/entities/budget.entity');
 const { BudgetsService } = require('../dist/modules/budgets/budgets.service');
 const { InitialPersistence1792368000000 } = require('../dist/database/migrations/1792368000000-InitialPersistence');
+const { Budgets1792454400000 } = require('../dist/database/migrations/1792454400000-Budgets');
+const { SavingsGoal } = require('../dist/modules/savings-goals/entities/savings-goal.entity');
+const { SavingsEntry } = require('../dist/modules/savings-goals/entities/savings-entry.entity');
+const { SavingsGoalsService } = require('../dist/modules/savings-goals/savings-goals.service');
 
 // This is an explicit integration suite: missing dedicated DB configuration fails, never skips.
 const password = 'local-test-password-only';
@@ -37,13 +41,15 @@ before(async () => {
   process.env.NODE_ENV = 'test';
   source = createDataSource(process.env.DATABASE_URL);
   await source.initialize();
-  assert.equal((await source.runMigrations()).length, 2);
+  assert.equal((await source.runMigrations()).length, 3);
   assert.equal((await source.runMigrations()).length, 0);
   await seedDevelopment(source, password, 'test');
   await seedDevelopment(source, password, 'test');
   users = await source.getRepository(User).find({ order: { email: 'ASC' } });
   assert.equal(users.length, 2);
   assert.equal(await source.getRepository(Budget).count(), 6);
+  assert.equal(await source.getRepository(SavingsGoal).count(), 12);
+  assert.equal(await source.getRepository(SavingsEntry).count(), 12);
   const { NestFactory } = require('@nestjs/core');
   const { AppModule } = require('../dist/app.module');
   app = await NestFactory.create(AppModule, { logger: false });
@@ -118,7 +124,7 @@ test('authenticated dashboard validates query and serves balance, summary and ex
     assert.equal(body.period.start, '2026-10-01T04:00:00.000Z');
     assert.equal(body.currency, 'BOB');
     assert.equal(body.sections.balance.status, 'ready');
-    assert.equal(body.sections.balance.data.amount, email === SEED_EMAILS[0] ? '2500.05' : '859.50');
+    assert.equal(body.sections.balance.data.amount, email === SEED_EMAILS[0] ? '2200.05' : '259.50');
     assert.equal(body.sections.balance.data.cutoff, body.asOf);
     assert.deepEqual(body.sections.monthlySummary, { status: 'ready', data: { income: '0.00', expense: email === SEED_EMAILS[0] ? '500.05' : '40.50' } });
     const distribution = body.sections.expenseDistribution;
@@ -128,7 +134,8 @@ test('authenticated dashboard validates query and serves balance, summary and ex
     assert.equal(distribution.data[0].percentage, '100.00');
     assert.equal(distribution.data[0].categoryName, email === SEED_EMAILS[0] ? 'Alimentacion' : 'Transporte');
     assert.deepEqual(body.sections.budgets, { status: 'ready', data: [] });
-    assert.deepEqual(body.sections.savingsGoals, { status: 'notAvailable' });
+    assert.equal(body.sections.savingsGoals.status, 'ready');
+    assert.equal(body.sections.savingsGoals.data.length, 5);
     assert.ok(!JSON.stringify(body).includes(users[0].id));
   }
 });
@@ -531,7 +538,7 @@ test('budget HTTP uses monthly gross expense API including future/void/refunds, 
   assert.equal(budget.remaining, '0.00');
   assert.equal(budget.state, 'warning');
   assert.equal(budget.progress, '100.00');
-  assert.deepEqual(body.sections.savingsGoals, { status: 'notAvailable' });
+  assert.deepEqual(body.sections.savingsGoals, { status: 'ready', data: [] });
   const next = await (await fetch(`${base}/dashboard?month=2100-04`, { headers: auth(token) })).json();
   assert.deepEqual(next.sections.budgets, { status: 'ready', data: [] });
 });
@@ -551,7 +558,7 @@ test('seed budgets expose 80/100/exceeded independently for both users without c
     assert.equal(byName.get('Demo presupuesto excedido').state, 'exceeded');
     assert.ok(budgets.every(item => item.limit === (i === 0 ? '100.00' : '200.00')));
     assert.equal(body.sections.monthlySummary.data.income, body.sections.monthlySummary.data.expense);
-    assert.equal(body.sections.balance.data.amount, i === 0 ? '2500.05' : '859.50');
+    assert.equal(body.sections.balance.data.amount, i === 0 ? '2200.05' : '259.50');
   }
 });
 
@@ -592,7 +599,7 @@ test('budget consumption retains common snapshot after concurrent expense and bu
   } finally { distributions.getForUser = originalDistribution; budgets.getForUser = originalBudgets; }
 });
 
-test('budget migration upgrades existing BE01 users and seed preserves credentials/data across repetition and budget rollback/reapply', async () => {
+test('budget and savings migrations upgrade existing BE01 users and seed preserves credentials/data across rollback/reapply', async () => {
   const upgradeDatabase = `${database}_upgrade`;
   const url = new URL(process.env.DATABASE_URL);
   url.pathname = `/${upgradeDatabase}`;
@@ -611,7 +618,7 @@ test('budget migration upgrades existing BE01 users and seed preserves credentia
     await upgrade.destroy();
     upgrade = createDataSource(url.toString());
     await upgrade.initialize();
-    assert.equal((await upgrade.runMigrations()).length, 1); // Only BE05 is new.
+    assert.equal((await upgrade.runMigrations()).length, 2); // BE05 and BE06 follow the existing BE01 schema.
     await assert.rejects(seedDevelopment(upgrade, password, 'test')); // Existing future opening is not bypassed.
     assert.equal(await upgrade.getRepository(Budget).count(), 0);
     assert.equal((await upgrade.query('SELECT COUNT(*)::int AS count FROM categories'))[0].count, 0);
@@ -630,7 +637,8 @@ test('budget migration upgrades existing BE01 users and seed preserves credentia
     assert.equal((await upgrade.getRepository(Budget).findOneByOrFail({ id: sample.id })).limit, '123.45');
     assert.deepEqual(await upgrade.query('SELECT * FROM transactions ORDER BY id'), movements);
     await upgrade.undoLastMigration();
-    assert.equal((await upgrade.runMigrations()).length, 1);
+    await upgrade.undoLastMigration();
+    assert.equal((await upgrade.runMigrations()).length, 2);
     await seedDevelopment(upgrade, password, 'test');
     assert.deepEqual(await upgrade.query('SELECT * FROM transactions ORDER BY id'), movements);
     assert.deepEqual(await upgrade.query('SELECT * FROM users ORDER BY email'), before);
@@ -638,15 +646,239 @@ test('budget migration upgrades existing BE01 users and seed preserves credentia
   } finally { if (upgrade.isInitialized) await upgrade.destroy(); await admin.query(`DROP DATABASE "${upgradeDatabase}"`); }
 });
 
+test('savings migration upgrades BE05 without changing existing users, movements or budgets', async () => {
+  const upgradeDatabase = `${database}_be05`;
+  const url = new URL(process.env.DATABASE_URL);
+  url.pathname = `/${upgradeDatabase}`;
+  await admin.query(`CREATE DATABASE "${upgradeDatabase}"`);
+  let upgrade = createDataSource(url.toString());
+  upgrade.setOptions({ migrations: [InitialPersistence1792368000000, Budgets1792454400000] });
+  try {
+    await upgrade.initialize();
+    assert.equal((await upgrade.runMigrations()).length, 2);
+    const [original] = await source.query('SELECT * FROM users WHERE email=$1', [SEED_EMAILS[0]]);
+    const categoryId = randomUUID();
+    await upgrade.query('INSERT INTO users(id,email,password_hash,opening_balance,opening_at,currency) VALUES($1,$2,$3,$4,$5,$6)', [original.id,original.email,original.password_hash,original.opening_balance,original.opening_at,original.currency]);
+    await upgrade.query('INSERT INTO categories(id,user_id,name) VALUES($1,$2,\'Existing category\')', [categoryId,original.id]);
+    await upgrade.query('INSERT INTO budgets(id,user_id,category_id,month,limit_amount) VALUES($1,$2,$3,\'2026-10\',\'123.45\')', [randomUUID(),original.id,categoryId]);
+    await upgrade.query('INSERT INTO transactions(id,user_id,category_id,type,status,amount,occurred_at) VALUES($1,$2,$3,\'expense\',\'posted\',\'12.34\',\'2026-10-01T12:00:00Z\')', [randomUUID(),original.id,categoryId]);
+    const snapshot = async () => ({ users: await upgrade.query('SELECT * FROM users ORDER BY id'), budgets: await upgrade.query('SELECT * FROM budgets ORDER BY id'), movements: await upgrade.query('SELECT * FROM transactions ORDER BY id') });
+    const before = await snapshot();
+    await upgrade.destroy();
+    upgrade = createDataSource(url.toString());
+    await upgrade.initialize();
+    assert.equal((await upgrade.runMigrations()).length, 1);
+    assert.deepEqual(await snapshot(), before);
+    assert.equal(await upgrade.getRepository(SavingsGoal).count(), 0);
+    await seedDevelopment(upgrade, password, 'test');
+    const entries = await upgrade.query('SELECT * FROM savings_entries ORDER BY id');
+    await seedDevelopment(upgrade, password, 'test');
+    assert.deepEqual(await upgrade.query('SELECT * FROM savings_entries ORDER BY id'), entries);
+    assert.deepEqual(await upgrade.query('SELECT * FROM users WHERE id=$1', [original.id]), before.users);
+    assert.deepEqual(await upgrade.query('SELECT * FROM budgets WHERE id=$1', [before.budgets[0].id]), before.budgets);
+    assert.deepEqual(await upgrade.query('SELECT * FROM transactions WHERE id=$1', [before.movements[0].id]), before.movements);
+  } finally { if (upgrade.isInitialized) await upgrade.destroy(); await admin.query(`DROP DATABASE "${upgradeDatabase}"`); }
+});
+
+async function appendSavings(fixture, values = {}) {
+  const entry = { id: randomUUID(), userId: fixture.userId, goalId: fixture.goalId, type: 'contribution', amount: '10.00', currency: 'BOB', occurredAt: new Date('2026-10-01T12:00:00Z'), ...values };
+  await source.getRepository(SavingsEntry).insert(entry);
+  return entry.id;
+}
+
+async function goalForUser(userId, values = {}) {
+  const goalId = randomUUID();
+  await source.getRepository(SavingsGoal).insert({ id: goalId, userId, name: 'Goal fixture', target: '100.00', currency: 'BOB', createdAt: new Date('2026-01-01T00:00:00Z'), targetDate: null, archivedAt: null, ledgerVersion: '0', ...values });
+  return { userId, goalId };
+}
+
+test('persisted savings reserve produces D03 balance2420.05 exactly once without affecting income or expense and isolates users', async () => {
+  const fixture = await balanceFixture('1000.00', [{ amount: '2000.10' }, { type: 'expense', amount: '500.05', at: '2026-10-05T12:00:00Z' }]);
+  const goal = await goalForUser(fixture.userId);
+  await appendSavings(goal, { amount: '100.00', occurredAt: new Date('2026-10-06T12:00:00Z') });
+  await appendSavings(goal, { type: 'withdrawal', amount: '20.00', occurredAt: new Date('2026-10-07T12:00:00Z') });
+  const other = await balanceFixture('0.00');
+  await appendSavings(await goalForUser(other.userId), { amount: '500.00' });
+  const asOf = new Date('2026-10-19T12:00:00Z');
+  assert.equal((await app.get(BalanceService).getForUser(fixture.userId, asOf)).amount, '2420.05');
+  const reader = app.get(SavingsReservationReader);
+  assert.equal(reader.constructor.name, 'PersistedSavingsReservationReader');
+  assert.equal(await source.transaction(manager => reader.reservedMinorUnits(fixture.userId, asOf, manager)), 8000n);
+  const token = await accessToken(fixture.email);
+  for (const [month, income, expense] of [['2026-10','0.00','500.05'], ['2026-09','2000.10','0.00']]) {
+    const response = await fetch(`${base}/dashboard?month=${month}`, { headers: auth(token) });
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.sections.balance.data.amount, '2420.05');
+    assert.equal(body.sections.balance.data.cutoff, body.asOf);
+    assert.deepEqual(body.sections.monthlySummary.data, { income, expense });
+    assert.deepEqual(body.sections.savingsGoals.data, [{ id: goal.goalId, name: 'Goal fixture', target: '100.00', saved: '80.00', remaining: '20.00', progress: '80.00', state: 'active', targetDate: null }]);
+  }
+  assert.equal((await source.query('SELECT COUNT(*)::int AS count FROM transactions WHERE user_id=$1', [fixture.userId]))[0].count, 2);
+});
+
+test('goals classify empty, partial, completed, exceeded and overdue using local day, with completion precedence and real progress', async () => {
+  const fixture = await balanceFixture('0.00');
+  const service = app.get(SavingsGoalsService);
+  assert.deepEqual(await service.getForUser(fixture.userId, new Date()), []);
+  await assert.rejects(service.getForUser(randomUUID(), new Date()), error => error.getStatus() === 401);
+  const cases = [
+    { name: 'none', amount: null, date: null, saved: '0.00', remaining: '100.00', progress: '0.00', state: 'active' },
+    { name: 'partial', amount: '20.05', date: '2099-12-31', saved: '20.05', remaining: '79.95', progress: '20.05', state: 'active' },
+    { name: 'complete', amount: '100.00', date: '2026-01-31', saved: '100.00', remaining: '0.00', progress: '100.00', state: 'completed' },
+    { name: 'exceeded', amount: '120.00', date: '2026-01-31', saved: '120.00', remaining: '0.00', progress: '120.00', state: 'completed' },
+    { name: 'overdue', amount: '1.00', date: '2026-10-17', saved: '1.00', remaining: '99.00', progress: '1.00', state: 'overdue' },
+  ];
+  for (const item of cases) {
+    const goal = await goalForUser(fixture.userId, { name: item.name, targetDate: item.date });
+    if (item.amount) await appendSavings(goal, { amount: item.amount });
+  }
+  const asOf = new Date('2026-10-19T02:00:00Z'); // Still October18 in La Paz.
+  const goals = await service.getForUser(fixture.userId, asOf);
+  for (const item of cases) {
+    const actual = goals.find(goal => goal.name === item.name);
+    assert.equal(actual.saved, item.saved); assert.equal(actual.remaining, item.remaining);
+    assert.equal(actual.progress, item.progress); assert.equal(actual.state, item.state);
+  }
+  const today = await goalForUser(fixture.userId, { name: 'today', targetDate: '2026-10-18' });
+  assert.equal((await service.getForUser(fixture.userId, asOf)).find(goal => goal.id === today.goalId).state, 'active');
+  assert.equal((await service.getForUser(fixture.userId, new Date('2026-10-19T04:00:00Z'))).find(goal => goal.id === today.goalId).state, 'overdue');
+});
+
+test('archival only hides goals while persisted reserve remains, withdrawal releases it, future entries and creation respect cutoff', async () => {
+  const fixture = await balanceFixture('200.00');
+  const goal = await goalForUser(fixture.userId, { archivedAt: new Date('2026-10-15T12:00:00Z') });
+  await appendSavings(goal, { amount: '100.00' });
+  await appendSavings(goal, { type: 'withdrawal', amount: '20.00', occurredAt: new Date('2026-10-20T12:00:00Z') });
+  await appendSavings(goal, { amount: '10.00', occurredAt: new Date('2026-10-22T12:00:00Z') }); // Archive does not block financial history.
+  const future = await goalForUser(fixture.userId, { createdAt: new Date('2100-01-01T00:00:00Z') });
+  await appendSavings(future, { amount: '10.00', occurredAt: new Date('2100-01-01T00:00:00Z') });
+  for (const [at, visible, balance] of [
+    ['2026-10-14T12:00:00Z',1,'100.00'], ['2026-10-15T12:00:00Z',0,'100.00'],
+    ['2026-10-20T12:00:00Z',0,'120.00'], ['2026-10-22T12:00:00Z',0,'110.00'],
+  ]) {
+    assert.equal((await app.get(SavingsGoalsService).getForUser(fixture.userId, new Date(at))).length, visible);
+    assert.equal((await app.get(BalanceService).getForUser(fixture.userId, new Date(at))).amount, balance);
+  }
+});
+
+test('savings schema rejects invalid target/entries/dates/owner and enforces append-only, effective prefixes and opening integrity', async () => {
+  const fixture = await balanceFixture('0.00');
+  for (const target of ['0.00','-1.00','1.001','1.230','1000000000000.00','NaN','Infinity']) await assert.rejects(goalForUser(fixture.userId, { target }));
+  for (const targetDate of ['2026-02-30','1899-12-31','9999-01-01','infinity']) await assert.rejects(goalForUser(fixture.userId, { targetDate }));
+  await assert.rejects(goalForUser(fixture.userId, { createdAt: new Date('1999-01-01T00:00:00Z') }));
+  await assert.rejects(goalForUser(fixture.userId, { archivedAt: new Date('2025-01-01T00:00:00Z') }));
+  await assert.rejects(goalForUser(fixture.userId, { currency: 'USD' }));
+  const goal = await goalForUser(fixture.userId);
+  for (const amount of ['0.00','-1.00','1.001','1.230','1000000000000.00','NaN','Infinity']) await assert.rejects(appendSavings(goal, { amount }));
+  await assert.rejects(appendSavings(goal, { currency: 'USD' }));
+  await assert.rejects(appendSavings(goal, { userId: users[1].id }));
+  await assert.rejects(appendSavings(goal, { occurredAt: new Date('2025-01-01T00:00:00Z') }));
+  await assert.rejects(appendSavings(goal, { type: 'withdrawal', amount: '0.01' }));
+  const entryId = await appendSavings(goal, { amount: '100.00', occurredAt: new Date('2026-03-01T00:00:00Z') });
+  await appendSavings(goal, { type: 'withdrawal', amount: '100.00', occurredAt: new Date('2026-04-01T00:00:00Z') });
+  await appendSavings(goal, { amount: '100.00', occurredAt: new Date('2026-05-01T00:00:00Z') });
+  // Final balance would remain99, but the April prefix would become -1.
+  await assert.rejects(appendSavings(goal, { type: 'withdrawal', amount: '1.00', occurredAt: new Date('2026-03-15T00:00:00Z') }));
+  await assert.rejects(source.getRepository(SavingsEntry).update({ id: entryId }, { amount: '101.00' }));
+  await assert.rejects(source.getRepository(SavingsEntry).delete({ id: entryId }));
+  await assert.rejects(source.getRepository(SavingsGoal).update({ id: goal.goalId }, { userId: users[1].id }));
+  await assert.rejects(source.getRepository(SavingsGoal).update({ id: goal.goalId }, { createdAt: new Date('2026-02-01T00:00:00Z') }));
+  await assert.rejects(source.query('UPDATE users SET opening_at=\'2026-02-01T00:00:00Z\' WHERE id=$1', [fixture.userId]));
+});
+
+test('concurrent withdrawals cannot overdraw under READ COMMITTED or stale REPEATABLE READ snapshots', async () => {
+  for (const isolation of ['READ COMMITTED','REPEATABLE READ']) {
+    const fixture = await balanceFixture('0.00');
+    const goal = await goalForUser(fixture.userId);
+    await appendSavings(goal, { amount: '100.00' });
+    const clients = [new Client({ connectionString: process.env.DATABASE_URL }), new Client({ connectionString: process.env.DATABASE_URL })];
+    try {
+      for (const client of clients) {
+        await client.connect(); await client.query(`BEGIN ISOLATION LEVEL ${isolation}`);
+        await client.query('SELECT COUNT(*) FROM savings_entries WHERE goal_id=$1', [goal.goalId]); // Fix both snapshots before writes.
+      }
+      const results = await Promise.all(clients.map(async client => {
+        try {
+          await client.query('INSERT INTO savings_entries(id,user_id,goal_id,type,amount,currency,occurred_at) VALUES($1,$2,$3,\'withdrawal\',\'80.00\',\'BOB\',\'2026-10-02T12:00:00Z\')', [randomUUID(),fixture.userId,goal.goalId]);
+          await client.query('COMMIT'); return 'committed';
+        } catch (error) { await client.query('ROLLBACK'); return error.code; }
+      }));
+      assert.equal(results.filter(item => item === 'committed').length, 1);
+      assert.ok(results.includes(isolation === 'REPEATABLE READ' ? '40001' : '23514'));
+      assert.equal((await app.get(SavingsGoalsService).getForUser(fixture.userId, new Date('2026-10-19T12:00:00Z')))[0].saved, '20.00');
+    } finally { await Promise.all(clients.map(client => client.end())); }
+  }
+});
+
+test('maximum savings/progress stay exact and aggregate overflow errors instead of truncation or zero', async () => {
+  const fixture = await balanceFixture('0.00');
+  const goal = await goalForUser(fixture.userId, { target: '0.01' });
+  await appendSavings(goal, { amount: '999999999999.99' });
+  const [value] = await app.get(SavingsGoalsService).getForUser(fixture.userId, new Date('2026-10-19T12:00:00Z'));
+  assert.equal(value.saved, '999999999999.99');
+  assert.equal(value.progress, '9999999999999900.00');
+  assert.equal(value.remaining, '0.00');
+  await appendSavings(goal, { amount: '0.01', occurredAt: new Date('2026-10-02T12:00:00Z') });
+  await assert.rejects(app.get(SavingsGoalsService).getForUser(fixture.userId, new Date('2026-10-19T12:00:00Z')), error => error.getStatus() === 422);
+  const response = await fetch(`${base}/dashboard`, { headers: auth(await accessToken(fixture.email)) });
+  assert.equal(response.status, 422);
+  assert.equal((await response.json()).error.code, 'DATA_OUT_OF_RANGE');
+});
+
+test('savings indicators and persisted balance reservations retain common snapshot across real concurrent contribution and failures stay global', async () => {
+  const fixture = await balanceFixture('100.00');
+  const goal = await goalForUser(fixture.userId);
+  await appendSavings(goal, { amount: '10.00' });
+  const reader = app.get(SavingsReservationReader);
+  const goals = app.get(SavingsGoalsService);
+  const originalReader = reader.reservedMinorUnits;
+  const originalGoals = goals.getForUser;
+  let readerManager;
+  try {
+    reader.reservedMinorUnits = async function(userId, asOf, manager) {
+      readerManager = manager;
+      const result = await originalReader.call(this, userId, asOf, manager);
+      await appendSavings(goal, { amount: '2.00', occurredAt: new Date('2026-10-02T12:00:00Z') });
+      return result;
+    };
+    goals.getForUser = async function(userId, asOf, manager) {
+      assert.equal(manager, readerManager);
+      assert.equal(manager.queryRunner.transactionDepth, 1);
+      return originalGoals.call(this, userId, asOf, manager);
+    };
+    const token = await accessToken(fixture.email);
+    const response = await fetch(`${base}/dashboard`, { headers: auth(token) });
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.sections.balance.data.amount, '90.00');
+    assert.equal(body.sections.savingsGoals.data[0].saved, '10.00');
+    reader.reservedMinorUnits = originalReader;
+    goals.getForUser = originalGoals;
+    const next = await (await fetch(`${base}/dashboard`, { headers: auth(token) })).json();
+    assert.equal(next.sections.balance.data.amount, '88.00');
+    assert.equal(next.sections.savingsGoals.data[0].saved, '12.00');
+    goals.getForUser = async () => { throw Object.assign(new Error('private savings query'), { code: 'ECONNRESET' }); };
+    const failed = await fetch(`${base}/dashboard`, { headers: auth(token) });
+    assert.equal(failed.status, 503);
+    const error = await failed.json();
+    assert.equal(error.error.code, 'DATA_UNAVAILABLE');
+    assert.ok(!('sections' in error));
+    assert.ok(!JSON.stringify(error).includes('private savings query'));
+  } finally { reader.reservedMinorUnits = originalReader; goals.getForUser = originalGoals; }
+});
+
 test('seed denies production and migrations can roll back and reapply on their own empty database', async () => {
   await assert.rejects(seedDevelopment(source, password, 'production'));
   assert.ok(await source.getRepository(User).count() >= 2);
   await app.close(); app = undefined;
   await source.undoLastMigration();
+  assert.equal((await source.query("SELECT to_regclass('public.savings_goals') AS name"))[0].name, null);
+  await source.undoLastMigration();
   assert.equal((await source.query("SELECT to_regclass('public.budgets') AS name"))[0].name, null);
   await source.undoLastMigration();
   assert.equal((await source.query("SELECT to_regclass('public.users') AS name"))[0].name, null);
-  assert.equal((await source.runMigrations()).length, 2);
+  assert.equal((await source.runMigrations()).length, 3);
   await seedDevelopment(source, password, 'test');
   assert.equal(await source.getRepository(User).count(), 2);
 });

@@ -6,7 +6,7 @@ Equipo **Cosa1ycosa2**: Luciana Salinas y Claudia Orellana.
 
 ## Estado
 
-BE-01 implementa TypeORM/PostgreSQL, migracion de usuarios, sesiones, categorias y movimientos, login/logout y dashboard protegido con validacion de mes. BE-02 agrega saldo acumulado; BE-03 ingresos y gastos mensuales; BE-04 distribucion por categoria; BE-05 indicadores de presupuestos por categoria/mes con limite, consumo, restante, progreso y estado exactos. Solo metas sigue `notAvailable` hasta BE-06. El health check `pg` sigue independiente de la persistencia ORM.
+BE-01 implementa TypeORM/PostgreSQL, migracion de usuarios, sesiones, categorias y movimientos, login/logout y dashboard protegido con validacion de mes. BE-02 agrega saldo acumulado; BE-03 ingresos y gastos mensuales; BE-04 distribucion por categoria; BE-05 indicadores de presupuestos por categoria/mes con limite, consumo, restante, progreso y estado exactos. BE-06 agrega metas y reservas persistidas; las cinco secciones estan disponibles. El health check `pg` sigue independiente de la persistencia ORM.
 
 ## Desarrollo local
 
@@ -56,7 +56,7 @@ $env:TEST_DATABASE_URL = 'postgresql://fintrack_test:isolated-test-only@127.0.0.
 npm test
 ```
 
-Esperar a que PostgreSQL acepte conexiones antes de ejecutar la suite. CI usa un servicio PostgreSQL 17 dedicado y ejecuta los mismos tests junto a npm ci, lint, tipos y build. La suite incluye BE-02 a BE-05, migraciones desde vacio/upgrade y seed ampliado; metas BE-06 queda pendiente. Ver evidencias [BE-02](docs/be-02-delivery.md), [BE-03](docs/be-03-delivery.md), [BE-04](docs/be-04-delivery.md) y [BE-05](docs/be-05-delivery.md) para casos y extension obligatoria de reservas en BE-06.
+Esperar a que PostgreSQL acepte conexiones antes de ejecutar la suite. CI usa un servicio PostgreSQL 17 dedicado y ejecuta los mismos tests junto a npm ci, lint, tipos y build. La suite incluye BE-02 a BE-06, migraciones desde vacio y actualizaciones desde BE-01/BE-05, retiros concurrentes y seed completo. Ver evidencias [BE-02](docs/be-02-delivery.md), [BE-03](docs/be-03-delivery.md), [BE-04](docs/be-04-delivery.md) y [BE-05](docs/be-05-delivery.md) y [BE-06](docs/be-06-delivery.md) para casos y reservas persistidas.
 
 ## Arquitectura
 
@@ -67,3 +67,9 @@ Persistencia: PostgreSQL. Infraestructura prevista: Docker Compose.
 Repositorios hermanos: ../fintrackFrontend y ../fintrackBackend. Cada uno tiene historial Git independiente. Los remotos de GitHub deben configurarse cuando se disponga de sus URLs.
 
 Consultar [arquitectura](docs/architecture.md), [integracion](docs/integration.md) y [flujo Git](CONTRIBUTING.md).
+
+## Metas y reservas BE-06
+
+Ejecutar `npm run db:migrate` aplica la tercera migracion antes de usar BE-06. El seed agrega seis metas por usuario (cinco visibles y una archivada), aportes y retiros reales, sin movimientos income/expense compensatorios. Reserva neta: alice 300.00, bob 600.00; saldo disponible demo al 2026-10-19: 2200.05 y 259.50 respectivamente. Aperturas, contrasenas, ocho movimientos previos por usuario y resumen mensual no se modifican. Repetir seed no duplica metas ni aportes.
+
+Archivar solo oculta: no libera la reserva. Un retiro explicito la libera, incluso en una meta archivada. El registro de ahorro conserva el historial: se agregan aportes/retiros, no se editan ni eliminan entradas. La base rechaza retiros que dejen negativo un saldo efectivo y serializa escritores; una transaccion REPEATABLE READ obsoleta falla con 40001 y el llamador debe reintentar toda su transaccion. No hay CRUD publico de metas en esta entrega.

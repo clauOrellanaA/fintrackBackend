@@ -1,6 +1,6 @@
 {
   "openapi": "3.1.0",
-  "info": {"title": "FinanTrack dashboard", "version": "1.0.0", "description": "BE-00 approved 2026-10-18. Planned endpoints, not implemented by documentation."},
+  "info": {"title": "FinanTrack dashboard", "version": "1.0.0", "description": "BE-00 approved 2026-10-18; BE-01 through BE-06 implemented. BE-07 validates examples and live HTTP responses against this contract."},
   "servers": [{"url": "http://localhost:3000/api/v1"}],
   "security": [{"bearerSession": []}],
   "paths": {

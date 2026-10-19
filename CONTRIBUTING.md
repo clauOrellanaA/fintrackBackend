@@ -17,3 +17,5 @@ React/Vite y NestJS ya tienen package.json y lockfile. Al implementar comportami
 En GitHub, crear main, dev y qa y configurar proteccion para las tres ramas, revision de pull requests y el check structure como obligatorio. Estas configuraciones requieren un remoto y permisos de administracion; los workflows no crean ramas ni activan protecciones.
 
 Para cambios coordinados en la API, enlazar los pull requests de ambos repositorios y mantener compatibilidad o versionar el contrato.
+
+BE-07 agrega validacion JSON Schema del OpenAPI publicado frente a ejemplos y respuestas HTTP completas. La suite se ejecuta en CI mediante npm test. Las mediciones de volumen son manuales con npm run benchmark:dashboard y PostgreSQL dedicado; no reemplazan pruebas funcionales ni prometen tiempos de produccion.

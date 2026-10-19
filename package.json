@@ -22,7 +22,8 @@
     "db:logs": "docker compose --env-file .env logs --tail=100 database",
     "db:migrate": "npm run build && node dist/database/migrate.js",
     "db:seed": "npm run build && node dist/database/seeds/development.js",
-    "test": "npm run build && node --test --test-concurrency=1 tests/*.test.cjs"
+    "test": "npm run build && node --test --test-concurrency=1 tests/*.test.cjs",
+    "benchmark:dashboard": "npm run build && node scripts/benchmark-dashboard.cjs"
   },
   "dependencies": {
     "@nestjs/common": "^11.2.7",
@@ -39,6 +40,8 @@
     "@types/luxon": "3.7.1",
     "@types/node": "^24.19.2",
     "@types/pg": "^8.23.1",
+    "ajv": "8.20.0",
+    "ajv-formats": "3.0.1",
     "eslint": "^10.13.0",
     "tsc-watch": "^7.2.1",
     "typescript": "~5.9.3",

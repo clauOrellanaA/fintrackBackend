@@ -23,6 +23,7 @@ const { Budgets1792454400000 } = require('../dist/database/migrations/1792454400
 const { SavingsGoal } = require('../dist/modules/savings-goals/entities/savings-goal.entity');
 const { SavingsEntry } = require('../dist/modules/savings-goals/entities/savings-entry.entity');
 const { SavingsGoalsService } = require('../dist/modules/savings-goals/savings-goals.service');
+const { assertContract } = require('./contract.cjs');
 
 // This is an explicit integration suite: missing dedicated DB configuration fails, never skips.
 const password = 'local-test-password-only';
@@ -866,6 +867,41 @@ test('savings indicators and persisted balance reservations retain common snapsh
     assert.ok(!('sections' in error));
     assert.ok(!JSON.stringify(error).includes('private savings query'));
   } finally { reader.reservedMinorUnits = originalReader; goals.getForUser = originalGoals; }
+});
+
+test('complete HTTP dashboard and errors satisfy OpenAPI for two sessions and truly empty finances', async () => {
+  for (const email of SEED_EMAILS) {
+    const response = await fetch(`${base}/dashboard?month=2026-02`, { headers: auth(await accessToken(email)) });
+    assert.equal(response.status, 200);
+    const dashboard = await response.json();
+    assertContract('Dashboard', dashboard);
+    assert.ok(Object.values(dashboard.sections).every(section => section.status === 'ready'));
+    const distributionTotal = dashboard.sections.expenseDistribution.data.reduce((total, row) => total + decimalToMinorUnits(row.amount), 0n);
+    assert.equal(distributionTotal, decimalToMinorUnits(dashboard.sections.monthlySummary.data.expense));
+    for (const budget of dashboard.sections.budgets.data) {
+      const category = dashboard.sections.expenseDistribution.data.find(row => row.categoryId === budget.categoryId);
+      assert.equal(budget.spent, category?.amount ?? '0.00');
+    }
+    assert.equal(dashboard.sections.balance.data.cutoff, dashboard.asOf);
+    assert.equal(response.headers.get('Cache-Control'), 'no-store');
+  }
+  const empty = await balanceFixture('42.50');
+  const token = await accessToken(empty.email);
+  const response = await fetch(`${base}/dashboard?month=2026-02`, { headers: auth(token) });
+  const dashboard = await response.json();
+  assert.equal(response.status, 200);
+  assertContract('Dashboard', dashboard);
+  assert.equal(dashboard.sections.balance.data.amount, '42.50');
+  assert.deepEqual(dashboard.sections.monthlySummary.data, { income: '0.00', expense: '0.00' });
+  for (const name of ['expenseDistribution', 'budgets', 'savingsGoals']) assert.deepEqual(dashboard.sections[name].data, []);
+  for (const [query, headers, status] of [['month=bad', {}, 401], ['month=2026-13', auth(token), 400], [`userId=${users[0].id}`, auth(token), 400]]) {
+    const invalid = await fetch(`${base}/dashboard?${query}`, { headers });
+    assert.equal(invalid.status, status);
+    const error = await invalid.json();
+    assertContract('Error', error);
+    assert.ok(!('sections' in error));
+    assert.equal(invalid.headers.get('Cache-Control'), 'no-store');
+  }
 });
 
 test('seed denies production and migrations can roll back and reapply on their own empty database', async () => {

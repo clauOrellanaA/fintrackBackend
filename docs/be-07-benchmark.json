@@ -1,0 +1,143 @@
+{
+  "node": "v24.15.0",
+  "postgres": "17.11",
+  "data": {
+    "users": 42,
+    "categories": 428,
+    "transactions": 210016,
+    "budgets": 50406,
+    "savings_goals": 2112,
+    "savings_entries": 21012
+  },
+  "selectedMonth": "2026-10",
+  "selectedUserMovements": 5008,
+  "selectQueries": 7,
+  "service": {
+    "samples": 20,
+    "p50Ms": 14.975,
+    "p95Ms": 16.317
+  },
+  "http": {
+    "samples": 20,
+    "p50Ms": 20.586,
+    "p95Ms": 26.346
+  },
+  "engineeringHttpP95BudgetMs": 500,
+  "meetsLocalBudget": true,
+  "scope": "Local warm-cache engineering budget, not a product SLA. Login/KDF excluded. Synthetic isolated data; no production conclusions.",
+  "plans": [
+    {
+      "executionMs": 6.602,
+      "sharedHitBlocks": 2451,
+      "sharedReadBlocks": 0,
+      "filteredRows": 245,
+      "indexes": [
+        "transactions_user_date_idx"
+      ],
+      "nodes": [
+        "Aggregate",
+        "Nested Loop",
+        "Seq Scan",
+        "Bitmap Heap Scan",
+        "Bitmap Index Scan"
+      ],
+      "query": "balance"
+    },
+    {
+      "executionMs": 1.391,
+      "sharedHitBlocks": 365,
+      "sharedReadBlocks": 0,
+      "filteredRows": 20506,
+      "indexes": [
+        "savings_goals_owner_idx"
+      ],
+      "nodes": [
+        "Aggregate",
+        "Hash Join",
+        "Seq Scan",
+        "Hash",
+        "Bitmap Heap Scan",
+        "Bitmap Index Scan"
+      ],
+      "query": "reservations"
+    },
+    {
+      "executionMs": 0.298,
+      "sharedHitBlocks": 254,
+      "sharedReadBlocks": 0,
+      "filteredRows": 61,
+      "indexes": [
+        "transactions_user_date_idx"
+      ],
+      "nodes": [
+        "Aggregate",
+        "Nested Loop",
+        "Seq Scan",
+        "Bitmap Heap Scan",
+        "Bitmap Index Scan"
+      ],
+      "query": "monthlySummary"
+    },
+    {
+      "executionMs": 0.446,
+      "sharedHitBlocks": 260,
+      "sharedReadBlocks": 0,
+      "filteredRows": 141,
+      "indexes": [
+        "transactions_user_date_idx",
+        "categories_user_id_name_key"
+      ],
+      "nodes": [
+        "Sort",
+        "Aggregate",
+        "Hash Join",
+        "Nested Loop",
+        "Seq Scan",
+        "Bitmap Heap Scan",
+        "Bitmap Index Scan",
+        "Hash"
+      ],
+      "query": "expenseDistribution"
+    },
+    {
+      "executionMs": 0.587,
+      "sharedHitBlocks": 26,
+      "sharedReadBlocks": 0,
+      "filteredRows": 41,
+      "indexes": [
+        "budgets_user_id_category_id_month_key",
+        "categories_user_id_name_key"
+      ],
+      "nodes": [
+        "Sort",
+        "Hash Join",
+        "Nested Loop",
+        "Seq Scan",
+        "Bitmap Heap Scan",
+        "Bitmap Index Scan",
+        "Hash"
+      ],
+      "query": "budgets"
+    },
+    {
+      "executionMs": 2.46,
+      "sharedHitBlocks": 367,
+      "sharedReadBlocks": 0,
+      "filteredRows": 20548,
+      "indexes": [
+        "savings_goals_owner_idx"
+      ],
+      "nodes": [
+        "Sort",
+        "Aggregate",
+        "Hash Join",
+        "Seq Scan",
+        "Hash",
+        "Nested Loop",
+        "Bitmap Heap Scan",
+        "Bitmap Index Scan"
+      ],
+      "query": "savingsGoals"
+    }
+  ]
+}

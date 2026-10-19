@@ -15,6 +15,10 @@ const { resolvePeriod } = require('../dist/modules/dashboard/period');
 const { ExpenseDistributionService } = require('../dist/modules/transactions/expense-distribution.service');
 const { decimalToMinorUnits } = require('../dist/shared/money');
 const { percentageOf } = require('../dist/shared/percentage');
+const { progressPercentage } = require('../dist/shared/percentage');
+const { Budget } = require('../dist/modules/budgets/entities/budget.entity');
+const { BudgetsService } = require('../dist/modules/budgets/budgets.service');
+const { InitialPersistence1792368000000 } = require('../dist/database/migrations/1792368000000-InitialPersistence');
 
 // This is an explicit integration suite: missing dedicated DB configuration fails, never skips.
 const password = 'local-test-password-only';
@@ -33,12 +37,13 @@ before(async () => {
   process.env.NODE_ENV = 'test';
   source = createDataSource(process.env.DATABASE_URL);
   await source.initialize();
-  assert.equal((await source.runMigrations()).length, 1);
+  assert.equal((await source.runMigrations()).length, 2);
   assert.equal((await source.runMigrations()).length, 0);
   await seedDevelopment(source, password, 'test');
   await seedDevelopment(source, password, 'test');
   users = await source.getRepository(User).find({ order: { email: 'ASC' } });
   assert.equal(users.length, 2);
+  assert.equal(await source.getRepository(Budget).count(), 6);
   const { NestFactory } = require('@nestjs/core');
   const { AppModule } = require('../dist/app.module');
   app = await NestFactory.create(AppModule, { logger: false });
@@ -122,7 +127,8 @@ test('authenticated dashboard validates query and serves balance, summary and ex
     assert.equal(distribution.data[0].amount, body.sections.monthlySummary.data.expense);
     assert.equal(distribution.data[0].percentage, '100.00');
     assert.equal(distribution.data[0].categoryName, email === SEED_EMAILS[0] ? 'Alimentacion' : 'Transporte');
-    assert.ok(Object.entries(body.sections).filter(([name]) => !['balance', 'monthlySummary', 'expenseDistribution'].includes(name)).every(([, section]) => section.status === 'notAvailable' && !('data' in section)));
+    assert.deepEqual(body.sections.budgets, { status: 'ready', data: [] });
+    assert.deepEqual(body.sections.savingsGoals, { status: 'notAvailable' });
     assert.ok(!JSON.stringify(body).includes(users[0].id));
   }
 });
@@ -132,9 +138,13 @@ test('domain query isolates persisted movements by authenticated session identit
   for (let i=0; i<users.length; i++) {
     const identity = await app.get(AuthService).authenticate(`Bearer ${await accessToken(users[i].email)}`);
     const transactions = await service.listForUser(identity.userId);
-    assert.equal(transactions.length, 2);
+    assert.equal(transactions.length, 8);
     assert.ok(transactions.every(item => item.userId === users[i].id));
-    assert.deepEqual(transactions.map(item => item.amount), i === 0 ? ['2000.10','500.05'] : ['700.00','40.50']);
+    const baseline = transactions.filter(item => item.occurredAt >= new Date('2026-09-01T00:00:00Z'));
+    assert.deepEqual(baseline.map(item => item.amount), i === 0 ? ['2000.10','500.05'] : ['700.00','40.50']);
+    const demonstration = transactions.filter(item => item.occurredAt < new Date('2026-09-01T00:00:00Z'));
+    assert.equal(demonstration.length, 6);
+    assert.equal(demonstration.reduce((total, item) => total + (item.type === 'income' ? 1n : -1n) * decimalToMinorUnits(item.amount), 0n), 0n);
   }
   await assert.rejects(service.listForUser(undefined));
 });
@@ -448,13 +458,195 @@ test('distribution and summary retain same snapshot across concurrent commit, an
   } finally { summaries.getForUser = originalSummary; distributions.getForUser = originalDistribution; }
 });
 
-test('seed denies production and migration can roll back and reapply on its own empty database', async () => {
+async function budgetFixture(spent = '0.00', limit = '100.00', month = '2026-10') {
+  const fixture = await balanceFixture('0.00');
+  const categoryId = randomUUID();
+  const budgetId = randomUUID();
+  await source.query('INSERT INTO categories(id,user_id,name) VALUES($1,$2,\'Budget fixture\')', [categoryId, fixture.userId]);
+  await source.getRepository(Budget).insert({ id: budgetId, userId: fixture.userId, categoryId, month, currency: 'BOB', limit });
+  if (decimalToMinorUnits(spent) > 0n) await source.query('INSERT INTO transactions(id,user_id,category_id,type,status,amount,currency,occurred_at) VALUES($1,$2,$3,\'expense\',\'posted\',$4,\'BOB\',$5)', [randomUUID(), fixture.userId, categoryId, spent, `${month}-05T12:00:00Z`]);
+  return { ...fixture, categoryId, budgetId };
+}
+
+test('budgets classify exact 0/80/100/exceeded thresholds before rounding and preserve negative remaining and progress over100', async () => {
+  const service = app.get(BudgetsService);
+  const period = resolvePeriod({ month: '2026-10' }, new Date());
+  for (const [spent, limit, state, progress, remaining] of [
+    ['0.00', '100.00', 'normal', '0.00', '100.00'],
+    ['79.99', '100.00', 'normal', '79.99', '20.01'],
+    ['80.00', '100.00', 'warning', '80.00', '20.00'],
+    ['100.00', '100.00', 'warning', '100.00', '0.00'],
+    ['100.01', '100.00', 'exceeded', '100.01', '-0.01'],
+    ['799.99', '1000.00', 'normal', '80.00', '200.01'],
+    ['1000.01', '1000.00', 'exceeded', '100.00', '-0.01'],
+  ]) {
+    const fixture = await budgetFixture(spent, limit);
+    assert.deepEqual(await service.getForUser(fixture.userId, period), [{ id: fixture.budgetId, categoryId: fixture.categoryId, categoryName: 'Budget fixture', limit, spent, remaining, progress, state }]);
+  }
+  const maximum = await budgetFixture('999999999999.99', '0.01');
+  const [budget] = await service.getForUser(maximum.userId, period);
+  assert.equal(budget.progress, '9999999999999900.00');
+  assert.equal(budget.remaining, '-999999999999.98');
+  assert.equal(progressPercentage(3n, 2n), '150.00');
+  assert.throws(() => percentageOf(3n, 2n)); // Distribution keeps its stricter validation.
+});
+
+test('budget schema rejects invalid limits, periods, null/cross-owner categories, currency and duplicate owner-category-month', async () => {
+  const fixture = await budgetFixture();
+  const [other] = await source.query('SELECT id FROM categories WHERE user_id=$1 LIMIT 1', [users[1].id]);
+  async function insert(overrides = {}) {
+    const value = { userId: fixture.userId, categoryId: fixture.categoryId, month: '2026-11', limit: '100.00', currency: 'BOB', ...overrides };
+    return source.getRepository(Budget).insert({ id: randomUUID(), ...value });
+  }
+  for (const limit of ['0.00', '-1.00', '1.001', '1.230', '1000000000000.00', 'NaN', 'Infinity']) await assert.rejects(insert({ limit }));
+  for (const month of ['2026-00', '2026-13', '2026-1', '0000-01', '1899-12', '9999-01']) await assert.rejects(insert({ month }));
+  await assert.rejects(insert({ categoryId: null }));
+  await assert.rejects(insert({ categoryId: other.id }));
+  await assert.rejects(insert({ currency: 'USD' }));
+  await assert.rejects(insert({ month: '2026-10' }));
+  await insert({ month: '1900-01', limit: '0.01' });
+  await insert({ month: '9998-12', limit: '999999999999.99' });
+});
+
+test('budget HTTP uses monthly gross expense API including future/void/refunds, no rollover, no budgets and user isolation', async () => {
+  const fixture = await budgetFixture('0.00', '10.00', '2100-03');
+  const expenseId = randomUUID();
+  const add = async (type, amount, at, status = 'posted', categoryId = fixture.categoryId, refund = null, id = randomUUID()) => source.query('INSERT INTO transactions(id,user_id,category_id,type,status,amount,currency,occurred_at,refund_of_id) VALUES($1,$2,$3,$4,$5,$6,\'BOB\',$7,$8)', [id,fixture.userId,categoryId,type,status,amount,at,refund]);
+  await add('expense', '8.00', '2100-03-01T04:00:00Z', 'posted', fixture.categoryId, null, expenseId);
+  await add('expense', '2.00', '2100-04-01T03:59:59.999Z');
+  await add('income', '1.00', '2100-03-02T12:00:00Z', 'posted', null, expenseId);
+  await add('expense', '99.00', '2100-03-01T03:59:59.999Z');
+  await add('expense', '88.00', '2100-04-01T04:00:00Z');
+  await add('expense', '77.00', '2100-03-10T12:00:00Z', 'void');
+  await budgetFixture('99.00', '100.00', '2100-03');
+  const token = await accessToken(fixture.email);
+  const response = await fetch(`${base}/dashboard?month=2100-03`, { headers: auth(token) });
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.equal(body.sections.balance.data.amount, '0.00');
+  assert.equal(body.sections.monthlySummary.data.expense, '10.00');
+  assert.equal(body.sections.expenseDistribution.data[0].amount, '10.00');
+  const [budget] = body.sections.budgets.data;
+  assert.equal(budget.spent, '10.00');
+  assert.equal(budget.remaining, '0.00');
+  assert.equal(budget.state, 'warning');
+  assert.equal(budget.progress, '100.00');
+  assert.deepEqual(body.sections.savingsGoals, { status: 'notAvailable' });
+  const next = await (await fetch(`${base}/dashboard?month=2100-04`, { headers: auth(token) })).json();
+  assert.deepEqual(next.sections.budgets, { status: 'ready', data: [] });
+});
+
+test('seed budgets expose 80/100/exceeded independently for both users without changing original October or accumulated balance', async () => {
+  for (let i = 0; i < users.length; i++) {
+    const token = await accessToken(users[i].email);
+    const response = await fetch(`${base}/dashboard?month=2026-02`, { headers: auth(token) });
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    const budgets = body.sections.budgets.data;
+    assert.equal(budgets.length, 3);
+    const byName = new Map(budgets.map(item => [item.categoryName,item]));
+    assert.equal(byName.get('Demo presupuesto 80%').progress, '80.00');
+    assert.equal(byName.get('Demo presupuesto 80%').state, 'warning');
+    assert.equal(byName.get('Demo presupuesto 100%').state, 'warning');
+    assert.equal(byName.get('Demo presupuesto excedido').state, 'exceeded');
+    assert.ok(budgets.every(item => item.limit === (i === 0 ? '100.00' : '200.00')));
+    assert.equal(body.sections.monthlySummary.data.income, body.sections.monthlySummary.data.expense);
+    assert.equal(body.sections.balance.data.amount, i === 0 ? '2500.05' : '859.50');
+  }
+});
+
+test('budget consumption retains common snapshot after concurrent expense and budget failures abort globally', async () => {
+  const fixture = await budgetFixture('10.00', '100.00');
+  const distributions = app.get(ExpenseDistributionService);
+  const budgets = app.get(BudgetsService);
+  const originalDistribution = distributions.getForUser;
+  const originalBudgets = budgets.getForUser;
+  let calls = 0;
+  let sharedManager;
+  try {
+    distributions.getForUser = async function(userId, period, manager) {
+      calls++;
+      sharedManager ??= manager;
+      assert.equal(manager, sharedManager);
+      assert.equal(manager.queryRunner.transactionDepth, 1);
+      const result = await originalDistribution.call(this, userId, period, manager);
+      if (calls === 1) await source.query('INSERT INTO transactions(id,user_id,category_id,type,status,amount,currency,occurred_at) VALUES($1,$2,$3,\'expense\',\'posted\',\'2.00\',\'BOB\',\'2026-10-06T12:00:00Z\')', [randomUUID(), fixture.userId, fixture.categoryId]);
+      return result;
+    };
+    const token = await accessToken(fixture.email);
+    const response = await fetch(`${base}/dashboard?month=2026-10`, { headers: auth(token) });
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.sections.budgets.data[0].spent, '10.00');
+    assert.equal(body.sections.expenseDistribution.data[0].amount, '10.00');
+    distributions.getForUser = originalDistribution;
+    const next = await (await fetch(`${base}/dashboard?month=2026-10`, { headers: auth(token) })).json();
+    assert.equal(next.sections.budgets.data[0].spent, '12.00');
+    budgets.getForUser = async () => { throw Object.assign(new Error('private SQL details'), { code: 'ECONNRESET' }); };
+    const failed = await fetch(`${base}/dashboard?month=2026-10`, { headers: auth(token) });
+    assert.equal(failed.status, 503);
+    const error = await failed.json();
+    assert.equal(error.error.code, 'DATA_UNAVAILABLE');
+    assert.ok(!('sections' in error));
+    assert.ok(!JSON.stringify(error).includes('private SQL details'));
+  } finally { distributions.getForUser = originalDistribution; budgets.getForUser = originalBudgets; }
+});
+
+test('budget migration upgrades existing BE01 users and seed preserves credentials/data across repetition and budget rollback/reapply', async () => {
+  const upgradeDatabase = `${database}_upgrade`;
+  const url = new URL(process.env.DATABASE_URL);
+  url.pathname = `/${upgradeDatabase}`;
+  await admin.query(`CREATE DATABASE "${upgradeDatabase}"`);
+  let upgrade = createDataSource(url.toString());
+  upgrade.setOptions({ migrations: [InitialPersistence1792368000000] });
+  try {
+    await upgrade.initialize();
+    assert.equal((await upgrade.runMigrations()).length, 1);
+    const originals = await source.query('SELECT * FROM users WHERE email=ANY($1) ORDER BY email', [[...SEED_EMAILS]]);
+    for (let i = 0; i < originals.length; i++) {
+      const user = originals[i];
+      await upgrade.query('INSERT INTO users(id,email,password_hash,opening_balance,opening_at,currency) VALUES($1,$2,$3,$4,$5,$6)', [user.id,user.email,user.password_hash,user.opening_balance,i === 0 ? '2100-01-01T00:00:00Z' : user.opening_at,user.currency]);
+      await upgrade.query('INSERT INTO transactions(id,user_id,type,status,amount,currency,occurred_at) VALUES($1,$2,\'income\',\'posted\',\'12.34\',\'BOB\',$3)', [randomUUID(),user.id,i === 0 ? '2101-01-01T00:00:00Z' : '2026-03-01T00:00:00Z']);
+    }
+    await upgrade.destroy();
+    upgrade = createDataSource(url.toString());
+    await upgrade.initialize();
+    assert.equal((await upgrade.runMigrations()).length, 1); // Only BE05 is new.
+    await assert.rejects(seedDevelopment(upgrade, password, 'test')); // Existing future opening is not bypassed.
+    assert.equal(await upgrade.getRepository(Budget).count(), 0);
+    assert.equal((await upgrade.query('SELECT COUNT(*)::int AS count FROM categories'))[0].count, 0);
+    assert.equal((await upgrade.query('SELECT COUNT(*)::int AS count FROM transactions'))[0].count, 2);
+    await upgrade.query('UPDATE users SET opening_at=$1 WHERE id=$2', [originals[0].opening_at, originals[0].id]);
+    const before = await upgrade.query('SELECT * FROM users ORDER BY email');
+    await seedDevelopment(upgrade, password, 'test');
+    await seedDevelopment(upgrade, password, 'test');
+    assert.deepEqual(await upgrade.query('SELECT * FROM users ORDER BY email'), before);
+    assert.equal(await upgrade.getRepository(Budget).count(), 6);
+    const movements = await upgrade.query('SELECT * FROM transactions ORDER BY id');
+    assert.equal(movements.length, 14); // One existing + six demo movements per user.
+    const [sample] = await upgrade.getRepository(Budget).find({ take: 1 });
+    await upgrade.getRepository(Budget).update({ id: sample.id }, { limit: '123.45' });
+    await seedDevelopment(upgrade, password, 'test');
+    assert.equal((await upgrade.getRepository(Budget).findOneByOrFail({ id: sample.id })).limit, '123.45');
+    assert.deepEqual(await upgrade.query('SELECT * FROM transactions ORDER BY id'), movements);
+    await upgrade.undoLastMigration();
+    assert.equal((await upgrade.runMigrations()).length, 1);
+    await seedDevelopment(upgrade, password, 'test');
+    assert.deepEqual(await upgrade.query('SELECT * FROM transactions ORDER BY id'), movements);
+    assert.deepEqual(await upgrade.query('SELECT * FROM users ORDER BY email'), before);
+    assert.equal(await upgrade.getRepository(Budget).count(), 6);
+  } finally { if (upgrade.isInitialized) await upgrade.destroy(); await admin.query(`DROP DATABASE "${upgradeDatabase}"`); }
+});
+
+test('seed denies production and migrations can roll back and reapply on their own empty database', async () => {
   await assert.rejects(seedDevelopment(source, password, 'production'));
   assert.ok(await source.getRepository(User).count() >= 2);
   await app.close(); app = undefined;
   await source.undoLastMigration();
+  assert.equal((await source.query("SELECT to_regclass('public.budgets') AS name"))[0].name, null);
+  await source.undoLastMigration();
   assert.equal((await source.query("SELECT to_regclass('public.users') AS name"))[0].name, null);
-  assert.equal((await source.runMigrations()).length, 1);
+  assert.equal((await source.runMigrations()).length, 2);
   await seedDevelopment(source, password, 'test');
   assert.equal(await source.getRepository(User).count(), 2);
 });

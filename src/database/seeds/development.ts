@@ -6,6 +6,7 @@ import { User } from '../../modules/users/entities/user.entity';
 import { Category } from '../../modules/transactions/entities/category.entity';
 import { Transaction } from '../../modules/transactions/entities/transaction.entity';
 import { hashPassword } from '../../modules/auth/password';
+import { seedBudgets } from './budgets';
 
 export const SEED_EMAILS = ['alice@fintrack.test', 'bob@fintrack.test'] as const;
 
@@ -18,15 +19,17 @@ export async function seedDevelopment(source: DataSource, password: string, envi
     await manager.query('SELECT pg_advisory_xact_lock(1792368000)');
     for (let i = 0; i < SEED_EMAILS.length; i++) {
       const existing = await manager.getRepository(User).findOneBy({ email: SEED_EMAILS[i] });
-      if (existing) continue;
-      const userId = randomUUID();
-      const categoryId = randomUUID();
-      await manager.getRepository(User).insert({ id: userId, email: SEED_EMAILS[i], passwordHash: hashes[i], openingBalance: i === 0 ? '1000.00' : '200.00', openingAt: new Date('2026-01-01T04:00:00.000Z'), currency: 'BOB' });
-      await manager.getRepository(Category).insert({ id: categoryId, userId, name: i === 0 ? 'Alimentacion' : 'Transporte' });
-      await manager.getRepository(Transaction).insert([
-        { id: randomUUID(), userId, categoryId: null, type: 'income', status: 'posted', amount: i === 0 ? '2000.10' : '700.00', currency: 'BOB', occurredAt: new Date('2026-09-15T12:00:00Z'), refundOfId: null },
-        { id: randomUUID(), userId, categoryId, type: 'expense', status: 'posted', amount: i === 0 ? '500.05' : '40.50', currency: 'BOB', occurredAt: new Date('2026-10-05T12:00:00Z'), refundOfId: null },
-      ]);
+      const userId = existing?.id ?? randomUUID();
+      if (!existing) {
+        const categoryId = randomUUID();
+        await manager.getRepository(User).insert({ id: userId, email: SEED_EMAILS[i], passwordHash: hashes[i], openingBalance: i === 0 ? '1000.00' : '200.00', openingAt: new Date('2026-01-01T04:00:00.000Z'), currency: 'BOB' });
+        await manager.getRepository(Category).insert({ id: categoryId, userId, name: i === 0 ? 'Alimentacion' : 'Transporte' });
+        await manager.getRepository(Transaction).insert([
+          { id: randomUUID(), userId, categoryId: null, type: 'income', status: 'posted', amount: i === 0 ? '2000.10' : '700.00', currency: 'BOB', occurredAt: new Date('2026-09-15T12:00:00Z'), refundOfId: null },
+          { id: randomUUID(), userId, categoryId, type: 'expense', status: 'posted', amount: i === 0 ? '500.05' : '40.50', currency: 'BOB', occurredAt: new Date('2026-10-05T12:00:00Z'), refundOfId: null },
+        ]);
+      }
+      await seedBudgets(manager, userId, i === 1);
     }
   });
 }

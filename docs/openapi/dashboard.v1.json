@@ -1,0 +1,54 @@
+{
+  "openapi": "3.1.0",
+  "info": {"title": "FinanTrack dashboard", "version": "1.0.0", "description": "BE-00 approved 2026-10-18. Planned endpoints, not implemented by documentation."},
+  "servers": [{"url": "http://localhost:3000/api/v1"}],
+  "security": [{"bearerSession": []}],
+  "paths": {
+    "/dashboard": {
+      "get": {
+        "operationId": "getDashboard",
+        "description": "Reject unknown or repeated query parameters. Identity comes exclusively from bearer session. No partial responses.",
+        "parameters": [{"name": "month", "in": "query", "required": false, "schema": {"type": "string", "pattern": "^(19[0-9]{2}|[2-8][0-9]{3}|9[0-8][0-9]{2}|99[0-8][0-9]|999[0-8])-(0[1-9]|1[0-2])$"}, "description": "1900-01 through 9998-12; default current product month."}],
+        "responses": {
+          "200": {"description": "Current implemented sections and explicit unavailable sections.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Dashboard"}, "examples": {"be01": {"value": {"period": {"month": "2026-10", "timeZone": "America/La_Paz", "start": "2026-10-01T04:00:00.000Z", "endExclusive": "2026-11-01T04:00:00.000Z"}, "currency": "BOB", "asOf": "2026-10-18T12:00:00.000Z", "sections": {"balance": {"status": "notAvailable"}, "monthlySummary": {"status": "notAvailable"}, "expenseDistribution": {"status": "notAvailable"}, "budgets": {"status": "notAvailable"}, "savingsGoals": {"status": "notAvailable"}}}}}}}},
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "422": {"$ref": "#/components/responses/OutOfRange"},
+          "500": {"$ref": "#/components/responses/InternalError"},
+          "503": {"$ref": "#/components/responses/Unavailable"}
+        }
+      }
+    },
+    "/auth/login": {"post": {"operationId": "login", "security": [], "requestBody": {"required": true, "content": {"application/json": {"schema": {"type": "object", "additionalProperties": false, "required": ["email", "password"], "properties": {"email": {"type": "string", "format": "email", "maxLength": 254}, "password": {"type": "string", "minLength": 1, "maxLength": 1024}}}}}}, "responses": {"200": {"description": "Session token; never log or store persistently in browser.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"type": "object", "required": ["accessToken", "tokenType", "expiresAt"], "properties": {"accessToken": {"type": "string"}, "tokenType": {"const": "Bearer"}, "expiresAt": {"type": "string", "format": "date-time"}}}}}}, "400": {"$ref": "#/components/responses/BadRequest"}, "401": {"$ref": "#/components/responses/Unauthorized"}, "503": {"$ref": "#/components/responses/Unavailable"}}}},
+    "/auth/session": {"delete": {"operationId": "logout", "responses": {"204": {"description": "Session revoked."}, "401": {"$ref": "#/components/responses/Unauthorized"}, "503": {"$ref": "#/components/responses/Unavailable"}}}}
+  },
+  "components": {
+    "securitySchemes": {"bearerSession": {"type": "http", "scheme": "bearer", "description": "Opaque 256-bit session token, absolute TTL 8h."}},
+    "responses": {
+      "BadRequest": {"description": "INVALID_PERIOD or INVALID_REQUEST", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
+      "Unauthorized": {"description": "UNAUTHENTICATED or INVALID_CREDENTIALS", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
+      "OutOfRange": {"description": "DATA_OUT_OF_RANGE", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
+      "InternalError": {"description": "INTERNAL_ERROR or DATA_INTEGRITY_ERROR", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
+      "Unavailable": {"description": "DATA_UNAVAILABLE; no synthetic zero values", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}}
+    },
+    "schemas": {
+      "Money": {"type": "string", "pattern": "^-?(0|[1-9][0-9]{0,11})\\.[0-9]{2}$", "description": "Exact BOB decimal, abs <=999999999999.99; canonical zero 0.00."},
+      "Percent": {"type": "string", "pattern": "^(0|[1-9][0-9]*)\\.[0-9]{2}$", "description": "HALF_UP rounded percentage; may exceed 100.00."},
+      "UnavailableSection": {"type": "object", "required": ["status"], "properties": {"status": {"const": "notAvailable"}}},
+      "Period": {"type": "object", "required": ["month", "timeZone", "start", "endExclusive"], "properties": {"month": {"type": "string"}, "timeZone": {"const": "America/La_Paz"}, "start": {"type": "string", "format": "date-time"}, "endExclusive": {"type": "string", "format": "date-time"}}},
+      "Balance": {"type": "object", "required": ["amount", "cutoff"], "properties": {"amount": {"$ref": "#/components/schemas/Money"}, "cutoff": {"type": "string", "format": "date-time"}}},
+      "MonthlySummary": {"type": "object", "required": ["income", "expense"], "properties": {"income": {"$ref": "#/components/schemas/Money"}, "expense": {"$ref": "#/components/schemas/Money"}}},
+      "CategoryExpense": {"type": "object", "required": ["categoryId", "categoryName", "amount", "percentage"], "properties": {"categoryId": {"type": ["string", "null"], "format": "uuid"}, "categoryName": {"type": "string"}, "amount": {"$ref": "#/components/schemas/Money"}, "percentage": {"$ref": "#/components/schemas/Percent"}}},
+      "Budget": {"type": "object", "required": ["id", "categoryId", "categoryName", "limit", "spent", "remaining", "progress", "state"], "properties": {"id": {"type": "string", "format": "uuid"}, "categoryId": {"type": "string", "format": "uuid"}, "categoryName": {"type": "string"}, "limit": {"$ref": "#/components/schemas/Money"}, "spent": {"$ref": "#/components/schemas/Money"}, "remaining": {"$ref": "#/components/schemas/Money"}, "progress": {"$ref": "#/components/schemas/Percent"}, "state": {"enum": ["normal", "warning", "exceeded"]}}},
+      "SavingsGoal": {"type": "object", "required": ["id", "name", "target", "saved", "remaining", "progress", "state", "targetDate"], "properties": {"id": {"type": "string", "format": "uuid"}, "name": {"type": "string"}, "target": {"$ref": "#/components/schemas/Money"}, "saved": {"$ref": "#/components/schemas/Money"}, "remaining": {"$ref": "#/components/schemas/Money"}, "progress": {"$ref": "#/components/schemas/Percent"}, "state": {"enum": ["active", "completed", "overdue"]}, "targetDate": {"type": ["string", "null"], "format": "date"}}},
+      "Dashboard": {"type": "object", "required": ["period", "currency", "asOf", "sections"], "properties": {"period": {"$ref": "#/components/schemas/Period"}, "currency": {"const": "BOB"}, "asOf": {"type": "string", "format": "date-time"}, "sections": {"type": "object", "required": ["balance", "monthlySummary", "expenseDistribution", "budgets", "savingsGoals"], "properties": {
+        "balance": {"oneOf": [{"$ref": "#/components/schemas/UnavailableSection"}, {"type": "object", "required": ["status", "data"], "properties": {"status": {"const": "ready"}, "data": {"$ref": "#/components/schemas/Balance"}}}]},
+        "monthlySummary": {"oneOf": [{"$ref": "#/components/schemas/UnavailableSection"}, {"type": "object", "required": ["status", "data"], "properties": {"status": {"const": "ready"}, "data": {"$ref": "#/components/schemas/MonthlySummary"}}}]},
+        "expenseDistribution": {"oneOf": [{"$ref": "#/components/schemas/UnavailableSection"}, {"type": "object", "required": ["status", "data"], "properties": {"status": {"const": "ready"}, "data": {"type": "array", "items": {"$ref": "#/components/schemas/CategoryExpense"}}}}]},
+        "budgets": {"oneOf": [{"$ref": "#/components/schemas/UnavailableSection"}, {"type": "object", "required": ["status", "data"], "properties": {"status": {"const": "ready"}, "data": {"type": "array", "items": {"$ref": "#/components/schemas/Budget"}}}}]},
+        "savingsGoals": {"oneOf": [{"$ref": "#/components/schemas/UnavailableSection"}, {"type": "object", "required": ["status", "data"], "properties": {"status": {"const": "ready"}, "data": {"type": "array", "items": {"$ref": "#/components/schemas/SavingsGoal"}}}}]}
+      }}}},
+      "Error": {"type": "object", "required": ["error"], "properties": {"error": {"type": "object", "required": ["code", "message"], "properties": {"code": {"type": "string"}, "message": {"type": "string"}}}}}
+    }
+  }
+}

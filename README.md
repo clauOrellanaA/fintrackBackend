@@ -6,7 +6,7 @@ Equipo **Cosa1ycosa2**: Luciana Salinas y Claudia Orellana.
 
 ## Estado
 
-BE-01 implementa TypeORM/PostgreSQL, migracion de usuarios, sesiones, categorias y movimientos, login/logout y dashboard protegido con validacion de mes. BE-02 agrega saldo acumulado; BE-03 ingresos y gastos mensuales; BE-04 distribucion por categoria; BE-05 indicadores de presupuestos por categoria/mes con limite, consumo, restante, progreso y estado exactos. BE-06 agrega metas y reservas persistidas; las cinco secciones estan disponibles. El health check `pg` sigue independiente de la persistencia ORM.
+BE-01 implementa TypeORM/PostgreSQL, migracion de usuarios, sesiones, categorias y movimientos, login/logout y dashboard protegido con validacion de mes. BE-02 agrega saldo acumulado; BE-03 ingresos y gastos mensuales; BE-04 distribucion por categoria; BE-05 indicadores de presupuestos por categoria/mes con limite, consumo, restante, progreso y estado exactos. BE-06 agrega metas y reservas persistidas; las cinco secciones estan disponibles. El modulo 2 agrega gestion autenticada de movimientos y categorias, junto con una migracion aditiva para `description`; su implementacion y pruebas estan completadas en el worktree asignado y pendientes de integracion mediante PR. El health check `pg` sigue independiente de la persistencia ORM.
 
 ## Desarrollo local
 
@@ -42,7 +42,7 @@ Tras migrar una base de desarrollo, configurar `NODE_ENV=development` y un `SEED
 
 BE-05 agrega una segunda migracion para budgets; ejecuta `npm run db:migrate` antes de repetir el seed sobre una base BE-01. El seed amplia tambien usuarios existentes: tres presupuestos en febrero2026 (80%,100%,excedido), limite100.00 para alice y200.00 para bob. Agrega seis movimientos demo por persona, tres gastos y tres ingresos compensatorios al mismo instante: saldo acumulado y datos de octubre no cambian. IDs deterministas evitan duplicados incluso al revertir/reaplicar la migracion de budgets. Presupuestos, passwords, aperturas y movimientos preexistentes no se sobreescriben. Una apertura posterior a los datos demo causa rollback completo, sin omitir su validacion.
 
-`POST /api/v1/auth/login` con JSON `{"email":"alice@fintrack.test","password":"<tu password local>"}` obtiene token aleatorio valido 8 horas. Usar `Authorization: Bearer <token>` en `GET /api/v1/dashboard?month=2026-10`; `DELETE /api/v1/auth/session` lo revoca. No enviar userId. Proteger HTTP con HTTPS fuera de localhost; el frontend conserva token solo en memoria. No existe registro publico ni CRUD financiero completo en esta entrega.
+`POST /api/v1/auth/login` con JSON `{"email":"alice@fintrack.test","password":"<tu password local>"}` obtiene token aleatorio valido 8 horas. Usar `Authorization: Bearer <token>` en `GET /api/v1/dashboard?month=2026-10`; `DELETE /api/v1/auth/session` lo revoca. No enviar userId. Proteger HTTP con HTTPS fuera de localhost; el frontend conserva token solo en memoria. No existe registro publico; el modulo 2 cubre movimientos y categorias segun su OpenAPI, sin integraciones bancarias ni operaciones financieras reales.
 
 ## Pruebas reales
 

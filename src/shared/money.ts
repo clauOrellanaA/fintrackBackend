@@ -15,7 +15,7 @@ export function decimalToMinorUnits(value: unknown): bigint {
 export function formatMinorUnits(value: bigint): string {
   const absolute = value < 0n ? -value : value;
   if (absolute > 99999999999999n) {
-    throw new UnprocessableEntityException({ error: { code: 'DATA_OUT_OF_RANGE', message: 'El saldo supera el importe permitido.' } });
+    throw new UnprocessableEntityException({ error: { code: 'DATA_OUT_OF_RANGE', message: 'El importe supera el limite permitido.' } });
   }
   return `${value < 0n ? '-' : ''}${absolute / 100n}.${(absolute % 100n).toString().padStart(2, '0')}`;
 }

@@ -27,3 +27,7 @@ Hay hasta tres subagentes simultáneos, trabajando por turnos y sin descendiente
 Skill: ../.agents/skills/fintrack-collaboration/SKILL.md. Las copias de backend y frontend tienen alcance distinto y no deben sobrescribirse una con otra.
 
 Aplica C:/fintrack/docs/git-por-feature.md: worktree por feature, responsable único de Git y publicación limitada a la rama autorizada. Solo planificación/revisión no publica; merge y despliegue requieren autorización aparte. Solo el coordinador actualiza C:/fintrack/docs. No versionar secretos ni .env. Cargar esta configuración no inicia features ni publica cambios.
+
+## Hooks de Codex
+
+Los hooks locales de este repositorio están definidos en [hooks.json](./hooks.json). Protegen secretos y pruebas, ejecutan build y las pruebas aplicables del backend antes de push de ramas feature, y registran actividad sin comandos ni contenido de parches. La documentación específica está en [codex-hooks.md](../docs/codex-hooks.md).

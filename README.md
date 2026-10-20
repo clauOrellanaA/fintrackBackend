@@ -1,83 +1,658 @@
-# FinanTrack - backend
+# FinanTrack — Backend
 
-Despliegue: [guia de Render, migraciones y primer usuario](docs/render-deployment.md).
+API REST para la gestión de finanzas personales, desarrollada con NestJS, TypeScript, TypeORM y PostgreSQL.
 
-Sistema web para la gestion y el control de finanzas personales.
+FinanTrack permite administrar ingresos, gastos, categorías y presupuestos desde una plataforma centralizada. Incluye un dashboard financiero con indicadores sobre el saldo disponible, los movimientos mensuales, la distribución de gastos, el consumo de presupuestos y las metas de ahorro.
 
-Equipo **Cosa1ycosa2**: Luciana Salinas y Claudia Orellana.
+Cada usuario accede exclusivamente a su información mediante una sesión autenticada.
 
-## Estado
+**Equipo Cosa1ycosa2:** Luciana Salinas y Claudia Orellana.
 
-BE-01 implementa TypeORM/PostgreSQL, migracion de usuarios, sesiones, categorias y movimientos, login/logout y dashboard protegido con validacion de mes. BE-02 agrega saldo acumulado; BE-03 ingresos y gastos mensuales; BE-04 distribucion por categoria; BE-05 indicadores de presupuestos por categoria/mes con limite, consumo, restante, progreso y estado exactos. BE-06 agrega metas y reservas persistidas; las cinco secciones estan disponibles. El modulo 2 agrega gestion autenticada de movimientos y categorias, junto con una migracion aditiva para `description`; su implementacion y pruebas estan completadas en el worktree asignado y pendientes de integracion mediante PR. El health check `pg` sigue independiente de la persistencia ORM.
+---
 
-## Desarrollo local
+## 1. Tecnologías utilizadas
 
-Requiere Node.js 22.12 o superior (validado con Node 24), npm y Docker Desktop iniciado con contenedores Linux. En PowerShell se puede usar `npm.cmd` si se bloquea `npm.ps1`.
+| Tecnología | Versión | Propósito |
+|---|---|---|
+| Node.js | 22.12 o superior | Entorno de ejecución |
+| NestJS | 11 | Framework backend |
+| TypeScript | Según configuración del proyecto | Lenguaje de programación |
+| TypeORM | 0.3 | ORM y gestión de migraciones |
+| PostgreSQL | 17 | Base de datos relacional |
+| Docker | Compatible con Docker Compose | Contenedorización de PostgreSQL |
+| npm | Compatible con Node.js | Gestión de dependencias |
+| OpenAPI | Contratos versionados | Documentación de endpoints |
+
+La integración entre NestJS y TypeORM permite organizar la lógica de negocio en módulos y gestionar la persistencia de datos mediante entidades, repositorios y migraciones.
+
+Los importes monetarios se manejan como valores decimales exactos expresados en bolivianos (BOB). La API devuelve estos importes como cadenas con dos decimales para evitar pérdidas de precisión.
+
+Los periodos mensuales utilizan la zona horaria `America/La_Paz`.
+
+---
+
+## 2. Funcionalidades principales
+
+### 2.1. Autenticación y sesiones
+
+- Inicio de sesión mediante correo electrónico y contraseña.
+- Protección de endpoints privados.
+- Identificación del usuario mediante el token de sesión.
+- Cierre de sesión con revocación del token.
+- Expiración de sesiones después de ocho horas.
+- Almacenamiento de contraseñas mediante hash `scrypt`.
+
+Las sesiones utilizan tokens bearer opacos, en lugar de depender de identificadores enviados directamente por el cliente.
+
+No existe un endpoint público de registro de usuarios.
+
+### 2.2. Gestión de transacciones
+
+Permite registrar y consultar movimientos financieros.
+
+Las operaciones disponibles incluyen:
+
+- Registrar ingresos y gastos.
+- Consultar el historial de movimientos.
+- Obtener el detalle de una transacción.
+- Modificar transacciones existentes.
+- Anular movimientos.
+
+Los movimientos pertenecen al usuario autenticado.
+
+### 2.3. Gestión de categorías
+
+Permite organizar los movimientos financieros mediante categorías.
+
+Incluye:
+
+- Listado de categorías.
+- Creación de categorías.
+- Modificación de categorías.
+- Eliminación de categorías.
+
+### 2.4. Gestión de presupuestos
+
+Permite definir límites de gasto y consultar su utilización.
+
+Incluye:
+
+- Registro de presupuestos.
+- Listado de presupuestos.
+- Actualización de presupuestos.
+- Eliminación de presupuestos.
+- Consulta de su consumo desde el dashboard.
+
+### 2.5. Dashboard financiero
+
+El dashboard reúne cinco grupos de indicadores:
+
+1. Saldo disponible.
+2. Ingresos y gastos mensuales.
+3. Distribución de gastos por categoría.
+4. Estado y consumo de presupuestos.
+5. Estado de las metas de ahorro.
+
+Las metas y reservas persistidas se consultan desde el dashboard, pero actualmente no cuentan con endpoints públicos de gestión.
+
+**Importante:** El saldo disponible puede reflejar movimientos acumulados. No todos los indicadores están restringidos al mes seleccionado.
+
+### 2.6. Funcionalidades fuera del alcance actual
+
+- Registro público de usuarios.
+- Integración automática con bancos.
+- Gestión pública de metas de ahorro.
+- Gestión pública de reservas.
+
+---
+
+## 3. Estructura general del proyecto
+
+La aplicación utiliza una organización modular.
+
+```text
+fintrack-backend/
+├── src/
+│   ├── config/
+│   │   └── Configuración de la aplicación
+│   ├── database/
+│   │   └── Configuración y migraciones
+│   └── modules/
+│       └── Módulos funcionales
+├── docs/
+│   ├── openapi/
+│   │   ├── dashboard.v1.json
+│   │   ├── transactions.v1.json
+│   │   └── budgets.v1.json
+│   ├── architecture.md
+│   ├── integration.md
+│   ├── dashboard-contract.md
+│   └── render-deployment.md
+├── CONTRIBUTING.md
+├── package.json
+├── package-lock.json
+└── README.md
+```
+
+Este árbol representa las rutas principales documentadas y no necesariamente todos los archivos del repositorio.
+
+La separación por módulos facilita el mantenimiento, las pruebas y la evolución de las funcionalidades.
+
+---
+
+## 4. Requisitos previos
+
+Antes de instalar FinanTrack, verifica que tu equipo tenga:
+
+- Node.js 22.12 o superior.
+- npm.
+- Docker Desktop.
+- Docker Compose.
+- Git.
+- PowerShell o una terminal compatible.
+
+La integración continua utiliza Node.js 24.
+
+### Verificar instalaciones
+
+Abre PowerShell y ejecuta:
 
 ```powershell
-cd C:\fintrack\fintrackBackend
+node --version
+npm --version
+docker --version
+docker compose version
+git --version
+```
+
+Si alguno de los comandos no se reconoce, verifica que la herramienta esté instalada y disponible en el `PATH`.
+
+### Puertos necesarios
+
+| Puerto | Servicio |
+|---|---|
+| 3000 | API NestJS |
+| 5432 | PostgreSQL |
+
+Ambos puertos deben estar disponibles si se mantienen los valores predeterminados.
+
+En el entorno local, Docker ejecuta PostgreSQL y Node.js ejecuta la API directamente en la computadora.
+
+---
+
+## 5. Instalación y configuración local
+
+Los siguientes comandos están preparados para PowerShell.
+
+### Paso 1. Obtener el repositorio
+
+Si todavía no tienes el proyecto:
+
+```powershell
+git clone <URL_DEL_REPOSITORIO>
+cd <CARPETA_DEL_REPOSITORIO>
+```
+
+Reemplaza los marcadores con la URL y el nombre de carpeta correspondientes.
+
+Si el repositorio ya está clonado, abre una terminal en su directorio raíz.
+
+### Paso 2. Instalar dependencias
+
+Ejecuta:
+
+```powershell
 npm ci
+```
+
+El comando instala las dependencias conforme a las versiones registradas en `package-lock.json`.
+
+Si PowerShell bloquea la ejecución de `npm.ps1`, utiliza:
+
+```powershell
+npm.cmd ci
+```
+
+### Paso 3. Preparar el entorno
+
+Ejecuta:
+
+```powershell
 npm run setup
+```
+
+Este comando prepara automáticamente la configuración local del proyecto.
+
+Según la configuración documentada:
+
+- Genera credenciales aleatorias para PostgreSQL.
+- Prepara el entorno de desarrollo.
+- Conserva configuraciones locales existentes.
+
+Antes de iniciar las migraciones, verifica que la conexión configurada corresponda a tu base de datos local.
+
+No reutilices credenciales de producción.
+
+---
+
+## 6. Levantar PostgreSQL con Docker
+
+### Paso 1. Iniciar Docker Desktop
+
+Abre Docker Desktop y verifica que el motor de contenedores Linux esté funcionando.
+
+### Paso 2. Validar la configuración
+
+Desde la raíz del backend:
+
+```powershell
 npm run db:config
+```
+
+Este comando valida la configuración de Docker Compose.
+
+### Paso 3. Iniciar PostgreSQL
+
+```powershell
 npm run db:up
+```
+
+Este comando inicia PostgreSQL y espera a que la base de datos esté disponible.
+
+### Paso 4. Ejecutar migraciones
+
+```powershell
 npm run db:migrate
+```
+
+El comando compila el proyecto y aplica las migraciones pendientes.
+
+La configuración utiliza:
+
+```text
+synchronize=false
+```
+
+Esto significa que TypeORM no modifica automáticamente el esquema de la base de datos durante el inicio de la aplicación.
+
+Los cambios estructurales se realizan mediante migraciones explícitas.
+
+### Verificar PostgreSQL
+
+```powershell
+npm run db:status
+```
+
+Para consultar los registros del contenedor:
+
+```powershell
+npm run db:logs
+```
+
+### Detener PostgreSQL
+
+```powershell
+npm run db:down
+```
+
+Este comando detiene PostgreSQL conservando su volumen de datos.
+
+**Nota:** Las migraciones gestionan el esquema, pero no garantizan la creación de usuarios o transacciones de ejemplo. La carga inicial de datos debe verificarse por separado.
+
+---
+
+## 7. Usuarios y datos de demostración
+
+Se dispone de dos usuarios de demostración con información financiera ficticia e independiente.
+
+### Credenciales del entorno de demostración en Render
+
+| Usuario | Correo | Contraseña |
+|---|---|---|
+| Alice | `alice@fintrack.test` | `clavesegura123` |
+| Bob | `bob@fintrack.test` | `clavesegura123` |
+
+Estas credenciales deben utilizarse exclusivamente con fines de demostración.
+
+**Importante:** La existencia de estos usuarios en Render no implica que estén disponibles automáticamente al crear una base de datos local.
+
+### Crear los usuarios de prueba en local
+
+Después de aplicar las migraciones a una base local vacía, ejecuta lo siguiente en la misma terminal PowerShell con el entorno de desarrollo configurado por `npm run setup`:
+
+```powershell
+$env:SEED_PASSWORD = Read-Host 'Contraseña local para Alice y Bob (mínimo 12 caracteres)'
+try {
+    npm run db:seed
+} finally {
+    Remove-Item Env:SEED_PASSWORD -ErrorAction SilentlyContinue
+}
+```
+
+El comando crea las cuentas `alice@fintrack.test` y `bob@fintrack.test` con la contraseña local elegida y sus datos ficticios. Las contraseñas de Render son independientes. El seed solo se permite en desarrollo o pruebas, no se ejecuta automáticamente al iniciar la API y no cambia las contraseñas de usuarios que ya existen. La contraseña debe tener entre 12 y 1024 caracteres.
+
+### Datos disponibles para demostración
+
+| Periodo | Datos de ejemplo |
+|---|---|
+| Febrero de 2026 | Tres presupuestos por usuario con consumos del 80 %, 100 % y superiores al límite |
+| Marzo de 2026 | Metas de ahorro con aportes y retiros |
+| Septiembre de 2026 | Ingresos registrados |
+| Octubre de 2026 | Gastos y movimientos por categoría |
+
+Para verificar los gastos de ejemplo, selecciona octubre de 2026.
+
+Para comprobar los diferentes niveles de consumo de presupuestos, selecciona febrero de 2026.
+
+Los saldos y algunos indicadores de metas pueden variar según la fecha y los movimientos acumulados.
+
+---
+
+## 8. Ejecutar el backend
+
+Una vez que PostgreSQL esté disponible y las migraciones se hayan aplicado, ejecuta:
+
+```powershell
 npm run start:dev
 ```
 
-`setup` crea `.env` solo si no existe, con contrasena PostgreSQL aleatoria. No imprime su valor. Si ya copiaste el ejemplo manualmente, sustituye sus valores de muestra y manten la contrasena de DATABASE_URL sincronizada con POSTGRES_PASSWORD. Las sesiones son opacas: no necesitan JWT_SECRET; esa variable de configuraciones antiguas ya no se utiliza. Las migraciones solo se aplican explicitamente, nunca al iniciar la API, y `synchronize` permanece desactivado.
+El servidor iniciará en modo desarrollo.
 
-- API: http://localhost:3000/api/v1/health (vida del proceso, no verifica la base).
-- Base: http://localhost:3000/api/v1/health/ready (`SELECT 1`; devuelve 503 si PostgreSQL no responde).
-- `npm run db:status` y `npm run db:logs`: diagnostico de PostgreSQL.
-- `npm run db:down`: detiene Compose sin eliminar el volumen.
-- Ctrl+C detiene la API. PostgreSQL sigue activo hasta ejecutar `db:down`.
+Este modo permite trabajar con reinicio automático ante cambios en archivos TypeScript.
 
-Verificacion: `npm run lint`, `npm run typecheck`, `npm run build`. Para ejecutar el compilado: `npm run build` y despues `npm start`. `npm run dev` y `npm run start:dev` recompilan y reinician al editar TypeScript.
+Con la configuración predeterminada, la API estará disponible en:
 
-Si Docker informa que no encuentra el motor, abrir Docker Desktop y esperar a que este listo. Si 5432 esta ocupado, resolver el conflicto o ajustar el puerto publicado y DATABASE_URL juntos. Cambiar POSTGRES_PASSWORD no cambia la contrasena de un volumen existente; conservar las credenciales originales o realizar una rotacion explicita, sin eliminar datos para resolverlo.
+```text
+http://localhost:3000/api/v1
+```
 
-Los scripts, configuraciones y lockfile se versionan. `.env`, `node_modules` y `dist` estan excluidos por `.gitignore`. Consultar [contrato aprobado](docs/dashboard-contract.md) y [OpenAPI](docs/openapi/dashboard.v1.json).
+### Verificar que la API funciona
 
-## Seed y acceso local
+**Estado del proceso:**
 
-Tras migrar una base de desarrollo, configurar `NODE_ENV=development` y un `SEED_PASSWORD` local de entre 12 y 1024 caracteres (en `.env` o variable del proceso), despues ejecutar `npm run db:seed`. Crea `alice@fintrack.test` y `bob@fintrack.test` con aperturas explicitas, categorias y movimientos distintos. Repetirlo no duplica ni borra datos y no cambia passwords existentes. No registra password ni token. Se rechaza fuera de development/test y no se ejecuta automaticamente.
+GET `http://localhost:3000/api/v1/health`
 
-BE-05 agrega una segunda migracion para budgets; ejecuta `npm run db:migrate` antes de repetir el seed sobre una base BE-01. El seed amplia tambien usuarios existentes: tres presupuestos en febrero2026 (80%,100%,excedido), limite100.00 para alice y200.00 para bob. Agrega seis movimientos demo por persona, tres gastos y tres ingresos compensatorios al mismo instante: saldo acumulado y datos de octubre no cambian. IDs deterministas evitan duplicados incluso al revertir/reaplicar la migracion de budgets. Presupuestos, passwords, aperturas y movimientos preexistentes no se sobreescriben. Una apertura posterior a los datos demo causa rollback completo, sin omitir su validacion.
+Este endpoint permite verificar que la API está respondiendo.
 
-`POST /api/v1/auth/login` con JSON `{"email":"alice@fintrack.test","password":"<tu password local>"}` obtiene token aleatorio valido 8 horas. Usar `Authorization: Bearer <token>` en `GET /api/v1/dashboard?month=2026-10`; `DELETE /api/v1/auth/session` lo revoca. No enviar userId. Proteger HTTP con HTTPS fuera de localhost; el frontend conserva token solo en memoria. No existe registro publico; el modulo 2 cubre movimientos y categorias segun su OpenAPI, sin integraciones bancarias ni operaciones financieras reales.
+**Estado de la conexión a PostgreSQL:**
 
-## Pruebas reales
+GET `http://localhost:3000/api/v1/health/ready`
 
-`npm test` compila y ejecuta node:test; requiere `TEST_DATABASE_URL` a una instancia dedicada cuya base se llame exactamente `fintrack_be01_test` y un rol con CREATEDB. La suite crea su propia base aleatoria, migra desde vacio, prueba HTTP y propiedad de datos, y elimina unicamente esa base al terminar. Nunca usa DATABASE_URL de desarrollo como destino de pruebas; si falta TEST_DATABASE_URL, falla explicitamente. No apuntar a la instancia del usuario.
+Cuando PostgreSQL está disponible, la respuesta esperada es:
 
-Ejemplo de instancia aislada (credenciales exclusivamente de prueba, puerto separado):
+```json
+{
+  "status": "ok",
+  "database": "connected"
+}
+```
+
+Si la base no está disponible, el endpoint devuelve HTTP `503`.
+
+### Ejecutar el compilado
+
+Para generar una versión compilada:
 
 ```powershell
-docker run --detach --name fintrack-be01-postgres-test --publish 127.0.0.1:16432:5432 --env POSTGRES_DB=fintrack_be01_test --env POSTGRES_USER=fintrack_test --env POSTGRES_PASSWORD=isolated-test-only postgres:17-alpine
-$env:TEST_DATABASE_URL = 'postgresql://fintrack_test:isolated-test-only@127.0.0.1:16432/fintrack_be01_test'
+npm run build
+```
+
+Después:
+
+```powershell
+npm start
+```
+
+Para detener la API iniciada desde la terminal, utiliza `Ctrl+C`.
+
+PostgreSQL seguirá ejecutándose hasta que se detenga explícitamente.
+
+---
+
+## 9. Autenticación y acceso a la API
+
+Los endpoints privados requieren autenticación.
+
+### 9.1. Iniciar sesión
+
+**Endpoint:**
+
+```http
+POST /api/v1/auth/login
+```
+
+**Headers:**
+
+```http
+Content-Type: application/json
+```
+
+**Cuerpo de ejemplo:**
+
+```json
+{
+  "email": "alice@fintrack.test",
+  "password": "<CONTRASENA_DEL_USUARIO>"
+}
+```
+
+La contraseña debe corresponder al usuario existente en el entorno al que se realiza la petición.
+
+La respuesta incluye:
+
+- `accessToken`: token de acceso.
+- `tokenType`: tipo de token.
+- `expiresAt`: fecha y hora de expiración.
+
+### 9.2. Acceder a un recurso protegido
+
+En las solicitudes privadas se debe incluir:
+
+```http
+Authorization: Bearer <ACCESS_TOKEN>
+```
+
+Por ejemplo:
+
+```http
+GET /api/v1/dashboard?month=2026-10
+Authorization: Bearer <ACCESS_TOKEN>
+```
+
+No se debe enviar `userId` para identificar al propietario de los datos.
+
+El servidor obtiene la identidad del usuario a partir de la sesión.
+
+### 9.3. Cerrar sesión
+
+**Endpoint:**
+
+```http
+DELETE /api/v1/auth/session
+```
+
+La operación revoca el token de la sesión autenticada.
+
+Las sesiones tienen una duración máxima documentada de ocho horas.
+
+### 9.4. Errores de autenticación
+
+| Código HTTP | Código de error | Descripción |
+|---|---|---|
+| 401 | `INVALID_CREDENTIALS` | Correo o contraseña incorrectos |
+| 401 | `UNAUTHENTICATED` | Token ausente, vencido o revocado |
+
+---
+
+## 10. Endpoints disponibles
+
+La API utiliza el prefijo:
+
+```text
+/api/v1
+```
+
+### Autenticación
+
+| Método | Endpoint | Descripción |
+|---|---|---|
+| POST | `/auth/login` | Iniciar sesión |
+| DELETE | `/auth/session` | Cerrar sesión y revocar token |
+
+### Dashboard
+
+| Método | Endpoint | Descripción |
+|---|---|---|
+| GET | `/dashboard` | Consultar indicadores financieros |
+
+El parámetro `month` permite solicitar información del periodo seleccionado.
+
+Ejemplo:
+
+```http
+GET /api/v1/dashboard?month=2026-10
+```
+
+### Transacciones
+
+| Método | Endpoint | Descripción |
+|---|---|---|
+| GET | `/transactions` | Listar movimientos |
+| POST | `/transactions` | Crear movimiento |
+| GET | `/transactions/{id}` | Consultar movimiento |
+| PATCH | `/transactions/{id}` | Editar movimiento |
+| DELETE | `/transactions/{id}` | Anular movimiento |
+
+### Categorías
+
+| Método | Endpoint | Descripción |
+|---|---|---|
+| GET | `/categories` | Listar categorías |
+| POST | `/categories` | Crear categoría |
+| PATCH | `/categories/{id}` | Editar categoría |
+| DELETE | `/categories/{id}` | Eliminar categoría |
+
+### Presupuestos
+
+| Método | Endpoint | Descripción |
+|---|---|---|
+| GET | `/budgets` | Listar presupuestos |
+| POST | `/budgets` | Crear presupuesto |
+| PATCH | `/budgets/{id}` | Editar presupuesto |
+| DELETE | `/budgets/{id}` | Eliminar presupuesto |
+
+---
+
+## 11. Pruebas y calidad del código
+
+El proyecto dispone de comandos para revisar la calidad y el funcionamiento de la aplicación.
+
+| Comando | Descripción |
+|---|---|
+| `npm run lint` | Análisis estático con ESLint |
+| `npm run typecheck` | Verificación de tipos TypeScript |
+| `npm run build` | Compilación del proyecto |
+| `npm test` | Ejecución de pruebas automatizadas |
+
+### Ejecutar verificaciones
+
+```powershell
+npm run lint
+npm run typecheck
+npm run build
+```
+
+### Ejecutar pruebas automatizadas
+
+```powershell
 npm test
 ```
 
-Esperar a que PostgreSQL acepte conexiones antes de ejecutar la suite. CI usa un servicio PostgreSQL 17 dedicado y ejecuta los mismos tests junto a npm ci, lint, tipos y build. La suite incluye BE-02 a BE-06, migraciones desde vacio y actualizaciones desde BE-01/BE-05, retiros concurrentes y seed completo. Ver evidencias [BE-02](docs/be-02-delivery.md), [BE-03](docs/be-03-delivery.md), [BE-04](docs/be-04-delivery.md) y [BE-05](docs/be-05-delivery.md) y [BE-06](docs/be-06-delivery.md) para casos y reservas persistidas.
+La suite documentada incluye pruebas de:
 
-## Arquitectura
+- Contratos de la API.
+- Migraciones.
+- Comunicación HTTP.
+- Integración con PostgreSQL.
 
-Frontend: React + TypeScript + Vite, organizado en src/features.
-Backend: Node.js + NestJS + TypeScript, organizado en src/modules.
-Persistencia: PostgreSQL. Infraestructura prevista: Docker Compose.
+### Base de datos aislada para pruebas
 
-Repositorios hermanos: ../fintrackFrontend y ../fintrackBackend. Cada uno tiene historial Git independiente. Los remotos de GitHub deben configurarse cuando se disponga de sus URLs.
+Las pruebas requieren una instancia de PostgreSQL dedicada, independiente del entorno de desarrollo.
 
-Consultar [arquitectura](docs/architecture.md), [integracion](docs/integration.md) y [flujo Git](CONTRIBUTING.md).
+Se debe configurar:
 
-## Metas y reservas BE-06
+```powershell
+$env:TEST_DATABASE_URL = 'postgresql://USUARIO:CONTRASENA@HOST:5432/fintrack_be01_test'
+```
 
-Ejecutar `npm run db:migrate` aplica la tercera migracion antes de usar BE-06. El seed agrega seis metas por usuario (cinco visibles y una archivada), aportes y retiros reales, sin movimientos income/expense compensatorios. Reserva neta: alice 300.00, bob 600.00; saldo disponible demo al 2026-10-19: 2200.05 y 259.50 respectivamente. Aperturas, contrasenas, ocho movimientos previos por usuario y resumen mensual no se modifican. Repetir seed no duplica metas ni aportes.
+La base indicada debe llamarse exactamente:
 
-Archivar solo oculta: no libera la reserva. Un retiro explicito la libera, incluso en una meta archivada. El registro de ahorro conserva el historial: se agregan aportes/retiros, no se editan ni eliminan entradas. La base rechaza retiros que dejen negativo un saldo efectivo y serializa escritores; una transaccion REPEATABLE READ obsoleta falla con 40001 y el llamador debe reintentar toda su transaccion. No hay CRUD publico de metas en esta entrega.
+```text
+fintrack_be01_test
+```
 
-## Validacion integrada BE-07
+El rol utilizado debe disponer del privilegio PostgreSQL `CREATEDB`.
 
-`npm test` valida los ejemplos OpenAPI y respuestas HTTP reales mediante JSON Schema 2020, junto con aislamiento, vacios, errores y consistencia de las cinco secciones. CI ejecuta la misma suite sobre PostgreSQL aislado. Ver [cierre backend](docs/be-07-delivery.md).
+Durante la ejecución, la suite crea sus propias bases temporales y las elimina al finalizar.
 
-Para repetir la medicion manual, configurar TEST_DATABASE_URL a la instancia de pruebas dedicada (igual que npm test) y ejecutar `npm run benchmark:dashboard`. Opcional: BENCHMARK_OUTPUT indica el archivo JSON de resultados. El comando crea una base aleatoria propia, carga datos sinteticos, mide 20 peticiones tras calentamiento y elimina solo esa base al terminar. No usar una instancia de desarrollo del usuario. La conexion de carga permite120s para insertar el fixture; la API conserva su timeout normal5s. El benchmark no forma parte de los checks de CI y no establece un SLA productivo. Evidencia exportada en [be-07-benchmark.json](docs/be-07-benchmark.json).
+**Advertencia:** No utilices una base de producción, una base de Render con datos importantes ni una instancia compartida que contenga información que necesites conservar.
+
+La integración continua utiliza PostgreSQL 17 dedicado y ejecuta las pruebas junto con las comprobaciones de lint, tipos y compilación.
+
+---
+
+## 12. Despliegue en Render
+
+FinanTrack contempla un entorno de despliegue en Render.
+
+El entorno de Render debe mantener su configuración y credenciales separadas de la instalación local.
+
+### Consideraciones principales
+
+- Configurar las variables de entorno requeridas.
+- Utilizar una conexión PostgreSQL correspondiente al entorno desplegado.
+- Proteger las credenciales de base de datos.
+- Ejecutar las migraciones antes de iniciar la aplicación.
+- Verificar que el servicio pueda conectarse a PostgreSQL.
+- Comprobar el funcionamiento de los endpoints de salud.
+
+El script documentado:
+
+```powershell
+npm run start:render
+```
+
+Aplica las migraciones antes de iniciar la API, a diferencia del procedimiento local que ejecuta las migraciones como paso independiente.
+
+Para instrucciones completas de despliegue, migraciones y creación del primer usuario, consultar:
+
+
+La configuración de producción no debe sobrescribirse con las credenciales generadas durante `npm run setup`.
+
+---
+
+## 13. Comandos de operación
+
+| Comando | Función |
+|---|---|
+| `npm ci` | Instalar dependencias fijadas |
+| `npm run setup` | Preparar configuración local |
+| `npm run db:config` | Validar Docker Compose |
+| `npm run db:up` | Iniciar PostgreSQL |
+| `npm run db:migrate` | Compilar y aplicar migraciones |
+| `npm run db:status` | Consultar estado de PostgreSQL |
+| `npm run db:logs` | Consultar registros |
+| `npm run db:down` | Detener PostgreSQL conservando datos |
+| `npm run start:dev` | Iniciar la API en desarrollo |
+| `npm run build` | Generar compilado |
+| `npm start` | Ejecutar compilado |
+| `npm run lint` | Ejecutar ESLint |
+| `npm run typecheck` | Verificar tipos |
+| `npm test` | Ejecutar pruebas |
+| `npm run start:render` | Ejecutar arranque configurado para Render |
+
+---
+
+Proyecto: **FinanTrack — Sistema de Gestión de Finanzas Personales**.
+
+Backend desarrollado con NestJS, TypeScript y PostgreSQL.

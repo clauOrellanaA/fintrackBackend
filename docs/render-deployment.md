@@ -10,7 +10,7 @@ Este procedimiento prepara QA o produccion. No crea recursos ni ejecuta migracio
 
 ## Configuracion
 
-Se puede importar `render.yaml` como Blueprint despues de integrar estos archivos en qa. La plantilla apunta a qa, usa una sola instancia gratuita y no crea una base de datos. Solicita DATABASE_URL y CORS_ORIGIN; comprobar ambos antes de aprobar la creacion. Para produccion usar recursos distintos y cambiar la rama a main. No compartir la base entre QA y produccion.
+Importar `render.yaml` como Blueprint desde main despues de promover e integrar estos archivos en main. La plantilla despliega produccion desde main, usa una sola instancia gratuita y no crea una base de datos. Solicita DATABASE_URL y CORS_ORIGIN; comprobar ambos antes de aprobar la creacion. Si el servicio ya existe, configurar tambien Branch: main en Render o sincronizar su Blueprint. No compartir la base entre QA y produccion.
 
 Configuracion manual equivalente:
 

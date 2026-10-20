@@ -3,7 +3,7 @@ services:
     name: fintrack-api
     runtime: node
     plan: free
-    branch: qa
+    branch: main
     autoDeployTrigger: checksPass
     buildCommand: npm ci --include=dev && npm run build
     startCommand: npm run start:render

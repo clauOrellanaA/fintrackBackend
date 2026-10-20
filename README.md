@@ -1,5 +1,7 @@
 # FinanTrack - backend
 
+Despliegue: [guia de Render, migraciones y primer usuario](docs/render-deployment.md).
+
 Sistema web para la gestion y el control de finanzas personales.
 
 Equipo **Cosa1ycosa2**: Luciana Salinas y Claudia Orellana.

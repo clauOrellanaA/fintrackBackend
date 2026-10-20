@@ -587,6 +587,91 @@ async function budgetFixture(spent = '0.00', limit = '100.00', month = '2026-10'
   return { ...fixture, categoryId, budgetId };
 }
 
+test('budget management authenticates, validates input and isolates CRUD by owner and month', async () => {
+  const fixture = await balanceFixture('0.00');
+  const token = await accessToken(fixture.email);
+  const categoryId = randomUUID();
+  await source.query('INSERT INTO categories(id,user_id,name) VALUES($1,$2,$3)', [categoryId, fixture.userId, 'Presupuesto API']);
+
+  const unauthorized = await fetch(`${base}/budgets?month=2026-10`);
+  assert.equal(unauthorized.status, 401);
+  assert.equal(unauthorized.headers.get('Cache-Control'), 'no-store');
+
+  const invalidPeriod = await fetch(`${base}/budgets?month=2026-13`, { headers: auth(token) });
+  assert.equal(invalidPeriod.status, 400);
+  assert.equal((await invalidPeriod.json()).error.code, 'INVALID_PERIOD');
+
+  const empty = await fetch(`${base}/budgets?month=2026-10`, { headers: auth(token) });
+  assert.equal(empty.status, 200);
+  assert.equal(empty.headers.get('Cache-Control'), 'no-store');
+  assert.deepEqual(await empty.json(), []);
+
+  for (const body of [
+    { categoryId, month: '2026-10', limit: '0.00' },
+    { categoryId, month: '2026-10', limit: '1.001' },
+    { categoryId, month: '2026-10', limit: 1 },
+    { categoryId, month: '2026-10', limit: '100.00', userId: fixture.userId },
+    { categoryId: randomUUID(), month: '2026-10', limit: '100.00' },
+    { categoryId, month: '2026-10', limit: '1000000000000.00' },
+  ]) {
+    const response = await fetch(`${base}/budgets`, {
+      method: 'POST', headers: { ...auth(token), 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    });
+    assert.ok([400, 404, 422].includes(response.status), `Unexpected status ${response.status} for ${JSON.stringify(body)}`);
+  }
+
+  const createdResponse = await fetch(`${base}/budgets`, {
+    method: 'POST', headers: { ...auth(token), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ categoryId, month: '2026-10', limit: '100.00' }),
+  });
+  assert.equal(createdResponse.status, 201);
+  assert.equal(createdResponse.headers.get('Cache-Control'), 'no-store');
+  const created = await createdResponse.json();
+  assert.equal(created.categoryId, categoryId);
+  assert.equal(created.categoryName, 'Presupuesto API');
+  assert.equal(created.limit, '100.00');
+  assert.equal(created.spent, '0.00');
+  assert.equal(created.remaining, '100.00');
+  assert.equal(created.progress, '0.00');
+  assert.equal(created.state, 'normal');
+  assertContract('Budget', created);
+
+  const duplicate = await fetch(`${base}/budgets`, {
+    method: 'POST', headers: { ...auth(token), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ categoryId, month: '2026-10', limit: '20.00' }),
+  });
+  assert.equal(duplicate.status, 409);
+
+  const otherToken = await accessToken(users.find(user => user.email !== fixture.email).email);
+  const otherList = await fetch(`${base}/budgets?month=2026-10`, { headers: auth(otherToken) });
+  assert.deepEqual(await otherList.json(), []);
+  const foreignUpdate = await fetch(`${base}/budgets/${created.id}`, {
+    method: 'PATCH', headers: { ...auth(otherToken), 'Content-Type': 'application/json' }, body: JSON.stringify({ limit: '200.00' }),
+  });
+  assert.equal(foreignUpdate.status, 404);
+
+  const updatedResponse = await fetch(`${base}/budgets/${created.id}`, {
+    method: 'PATCH', headers: { ...auth(token), 'Content-Type': 'application/json' }, body: JSON.stringify({ limit: '80.00' }),
+  });
+  assert.equal(updatedResponse.status, 200);
+  assert.equal(updatedResponse.headers.get('Cache-Control'), 'no-store');
+  const updated = await updatedResponse.json();
+  assert.equal(updated.limit, '80.00');
+  assertContract('Budget', updated);
+
+  const list = await fetch(`${base}/budgets?month=2026-10`, { headers: auth(token) });
+  assert.deepEqual(await list.json(), [updated]);
+  const nextMonth = await fetch(`${base}/budgets?month=2026-11`, { headers: auth(token) });
+  assert.deepEqual(await nextMonth.json(), []);
+
+  const deleted = await fetch(`${base}/budgets/${created.id}`, { method: 'DELETE', headers: auth(token) });
+  assert.equal(deleted.status, 204);
+  const missing = await fetch(`${base}/budgets/${created.id}`, {
+    method: 'PATCH', headers: { ...auth(token), 'Content-Type': 'application/json' }, body: JSON.stringify({ limit: '80.00' }),
+  });
+  assert.equal(missing.status, 404);
+});
+
 test('budgets classify exact 0/80/100/exceeded thresholds before rounding and preserve negative remaining and progress over100', async () => {
   const service = app.get(BudgetsService);
   const period = resolvePeriod({ month: '2026-10' }, new Date());

@@ -1021,6 +1021,27 @@ test('complete HTTP dashboard and errors satisfy OpenAPI for two sessions and tr
   }
 });
 
+test('production provisioning creates a login without demo data and never overwrites existing users', async () => {
+  const { createUser } = require('../dist/database/create-user');
+  const { verifyPassword } = require('../dist/modules/auth/password');
+  const email = `provision-${randomUUID()}@example.test`;
+  const env = { ADMIN_EMAIL: email.toUpperCase(), ADMIN_PASSWORD: password, NODE_ENV: 'production' };
+  const id = await createUser(source, env);
+  const user = await source.getRepository(User).createQueryBuilder('u').addSelect('u.passwordHash').where('u.id = :id', { id }).getOneOrFail();
+  assert.equal(user.email, email);
+  assert.equal(user.openingBalance, '0.00');
+  assert.equal(user.currency, 'BOB');
+  assert.notEqual(user.passwordHash, password);
+  assert.equal(await verifyPassword(password, user.passwordHash), true);
+  const categories = await source.query('SELECT count(*)::int AS count FROM categories WHERE user_id = $1', [id]);
+  assert.equal(categories[0].count, 0);
+  assert.equal((await login(email)).status, 200);
+  await assert.rejects(createUser(source, { ...env, ADMIN_PASSWORD: 'different-password', ADMIN_OPENING_BALANCE: '42.00' }));
+  const unchanged = await source.getRepository(User).findOneByOrFail({ id });
+  assert.equal(unchanged.openingBalance, '0.00');
+  assert.equal((await login(email)).status, 200);
+});
+
 test('seed denies production and migrations can roll back and reapply on their own empty database', async () => {
   await assert.rejects(seedDevelopment(source, password, 'production'));
   assert.ok(await source.getRepository(User).count() >= 2);

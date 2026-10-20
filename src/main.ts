@@ -9,7 +9,7 @@ async function bootstrap() {
   app.setGlobalPrefix(config.apiPrefix);
   app.enableCors({ origin: config.corsOrigin });
   app.enableShutdownHooks();
-  await app.listen(config.port, 'localhost');
+  await app.listen(config.port, '0.0.0.0');
   console.log(`API: http://localhost:${config.port}/${config.apiPrefix}/health`);
 }
 

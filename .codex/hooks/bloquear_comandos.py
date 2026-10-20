@@ -52,6 +52,7 @@ def run_push_checks(project: Path) -> bool:
             "*** Begin Patch",
             "*** Update File: src/modules/dashboard/dashboard.service.ts",
             "*** Update File: src/modules/transactions/transactions.service.ts",
+            "*** Update File: src/modules/budgets/budgets.service.ts",
             "*** Update File: src/database/data-source.ts",
             "*** End Patch",
         ]
@@ -85,7 +86,7 @@ def run_push_checks(project: Path) -> bool:
             file=sys.stderr,
         )
         return False
-    print("✅ Hook: pruebas de módulos 1 y 2 aprobadas antes del push.", file=sys.stderr)
+    print(    "✅ Hook: pruebas de módulos 1, 2 y 3 aprobadas antes del push.", file=sys.stderr)
     return True
 
 

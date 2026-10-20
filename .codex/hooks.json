@@ -10,6 +10,13 @@
             "commandWindows": "py -3 .codex/hooks/proteger_archivos.py",
             "timeout": 10,
             "statusMessage": "Hook FinanTrack: protegiendo secretos y archivos locales..."
+          },
+          {
+            "type": "command",
+            "command": "python3 .codex/hooks/detectar_credenciales.py",
+            "commandWindows": "py -3 .codex/hooks/detectar_credenciales.py",
+            "timeout": 10,
+            "statusMessage": "Hook FinanTrack: buscando credenciales en el parche..."
           }
         ]
       },

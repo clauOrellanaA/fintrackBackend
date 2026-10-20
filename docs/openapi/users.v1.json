@@ -1,0 +1,178 @@
+{
+  "openapi": "3.1.0",
+  "info": { "title": "FinanTrack users and security API", "version": "1.0.0" },
+  "servers": [{ "url": "/api/v1" }],
+  "paths": {
+    "/auth/register": {
+      "post": {
+        "operationId": "register",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["email", "password", "displayName"],
+                "properties": {
+                  "email": { "type": "string", "format": "email", "maxLength": 254 },
+                  "password": { "type": "string", "minLength": 12, "maxLength": 1024 },
+                  "displayName": { "type": "string", "minLength": 1, "maxLength": 80 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The account is created and an in-memory client session is issued.",
+            "headers": { "Cache-Control": { "schema": { "const": "no-store" } } },
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Session" } } }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "409": { "$ref": "#/components/responses/Conflict" },
+          "503": { "$ref": "#/components/responses/Unavailable" }
+        }
+      }
+    },
+    "/auth/password": {
+      "post": {
+        "operationId": "changePassword",
+        "security": [{ "bearerSession": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["currentPassword", "newPassword"],
+                "properties": {
+                  "currentPassword": { "type": "string", "minLength": 1, "maxLength": 1024 },
+                  "newPassword": { "type": "string", "minLength": 12, "maxLength": 1024 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": { "description": "Password updated and every active session revoked." },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "503": { "$ref": "#/components/responses/Unavailable" }
+        }
+      }
+    },
+    "/users/me": {
+      "get": {
+        "operationId": "getProfile",
+        "security": [{ "bearerSession": [] }],
+        "responses": {
+          "200": {
+            "description": "Authenticated user's editable profile.",
+            "headers": { "Cache-Control": { "schema": { "const": "no-store" } } },
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Profile" } } }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "503": { "$ref": "#/components/responses/Unavailable" }
+        }
+      },
+      "patch": {
+        "operationId": "updateProfile",
+        "security": [{ "bearerSession": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ProfileUpdate" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated profile.",
+            "headers": { "Cache-Control": { "schema": { "const": "no-store" } } },
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Profile" } } }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "409": { "$ref": "#/components/responses/Conflict" },
+          "503": { "$ref": "#/components/responses/Unavailable" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerSession": { "type": "http", "scheme": "bearer", "description": "Opaque session token, valid for eight hours." }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "Invalid request body or profile.",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+      },
+      "Unauthorized": {
+        "description": "UNAUTHENTICATED or INVALID_CURRENT_PASSWORD.",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+      },
+      "Conflict": {
+        "description": "EMAIL_ALREADY_REGISTERED, INVALID_OPENING_DATE, or OPENING_DATE_CONFLICT.",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+      },
+      "Unavailable": {
+        "description": "The persistence service is unavailable.",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+      }
+    },
+    "schemas": {
+      "Session": {
+        "type": "object",
+        "required": ["accessToken", "tokenType", "expiresAt"],
+        "properties": {
+          "accessToken": { "type": "string", "minLength": 1 },
+          "tokenType": { "const": "Bearer" },
+          "expiresAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Profile": {
+        "type": "object",
+        "required": ["email", "displayName", "openingBalance", "openingDate", "currency"],
+        "properties": {
+          "email": { "type": "string", "format": "email", "maxLength": 254 },
+          "displayName": { "type": ["string", "null"], "maxLength": 80 },
+          "openingBalance": { "$ref": "#/components/schemas/Money" },
+          "openingDate": { "type": "string", "format": "date" },
+          "currency": { "const": "BOB" }
+        }
+      },
+      "ProfileUpdate": {
+        "type": "object",
+        "minProperties": 1,
+        "additionalProperties": false,
+        "properties": {
+          "email": { "type": "string", "format": "email", "maxLength": 254 },
+          "displayName": { "type": "string", "minLength": 1, "maxLength": 80 },
+          "openingBalance": { "$ref": "#/components/schemas/Money" },
+          "openingDate": { "type": "string", "format": "date" }
+        }
+      },
+      "Money": {
+        "type": "string",
+        "pattern": "^-?(0|[1-9][0-9]{0,11})\\.[0-9]{2}$",
+        "description": "Exact BOB decimal, with two fractional digits."
+      },
+      "Error": {
+        "type": "object",
+        "required": ["error"],
+        "properties": {
+          "error": {
+            "type": "object",
+            "required": ["code", "message"],
+            "properties": { "code": { "type": "string" }, "message": { "type": "string" } }
+          }
+        }
+      }
+    }
+  }
+}

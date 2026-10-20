@@ -11,11 +11,12 @@ import { SavingsGoal } from '../modules/savings-goals/entities/savings-goal.enti
 import { SavingsEntry } from '../modules/savings-goals/entities/savings-entry.entity';
 import { SavingsGoals1792540800000 } from './migrations/1792540800000-SavingsGoals';
 import { TransactionDescription1792627200000 } from './migrations/1792627200000-TransactionDescription';
+import { UserProfile1792713600000 } from './migrations/1792713600000-UserProfile';
 
 export function createDataSource(url: string): DataSource {
   return new DataSource({
     type: 'postgres', url, entities: [User, Session, Category, Transaction, Budget, SavingsGoal, SavingsEntry],
-    migrations: [InitialPersistence1792368000000, Budgets1792454400000, SavingsGoals1792540800000, TransactionDescription1792627200000], synchronize: false, migrationsRun: false,
+    migrations: [InitialPersistence1792368000000, Budgets1792454400000, SavingsGoals1792540800000, TransactionDescription1792627200000, UserProfile1792713600000], synchronize: false, migrationsRun: false,
     migrationsTransactionMode: 'all', logging: false,
     invalidWhereValuesBehavior: { null: 'throw', undefined: 'throw' },
     extra: { max: 5, connectionTimeoutMillis: 3000, statement_timeout: 5000 },

@@ -7,7 +7,8 @@ const addFormats = require('ajv-formats');
 const openapi = JSON.parse(readFileSync(join(__dirname, '../docs/openapi/dashboard.v1.json'), 'utf8'));
 const transactionsOpenapi = JSON.parse(readFileSync(join(__dirname, '../docs/openapi/transactions.v1.json'), 'utf8'));
 const budgetsOpenapi = JSON.parse(readFileSync(join(__dirname, '../docs/openapi/budgets.v1.json'), 'utf8'));
-const documents = [openapi, transactionsOpenapi, budgetsOpenapi];
+const reportsOpenapi = JSON.parse(readFileSync(join(__dirname, '../docs/openapi/reports.v1.json'), 'utf8'));
+const documents = [openapi, transactionsOpenapi, budgetsOpenapi, reportsOpenapi];
 const ajv = new Ajv2020({ allErrors: true });
 addFormats(ajv);
 const validators = new Map();
@@ -24,4 +25,4 @@ function assertContract(name, value) {
   assert.ok(validate(value), `${name} violates OpenAPI: ${JSON.stringify(validate.errors)}`);
 }
 
-module.exports = { assertContract, openapi, transactionsOpenapi, budgetsOpenapi };
+module.exports = { assertContract, openapi, transactionsOpenapi, budgetsOpenapi, reportsOpenapi };

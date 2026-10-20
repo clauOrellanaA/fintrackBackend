@@ -7,6 +7,7 @@ const { seedDevelopment, SEED_EMAILS } = require('../dist/database/seeds/develop
 const { User } = require('../dist/modules/users/entities/user.entity');
 const { Session } = require('../dist/modules/auth/entities/session.entity');
 const { TransactionsService } = require('../dist/modules/transactions/transactions.service');
+const { Category } = require('../dist/modules/transactions/entities/category.entity');
 const { tokenHash, AuthService } = require('../dist/modules/auth/auth.service');
 const { BalanceService } = require('../dist/modules/transactions/balance.service');
 const { SavingsReservationReader } = require('../dist/modules/transactions/savings-reservation.reader');
@@ -42,7 +43,7 @@ before(async () => {
   process.env.NODE_ENV = 'test';
   source = createDataSource(process.env.DATABASE_URL);
   await source.initialize();
-  assert.equal((await source.runMigrations()).length, 3);
+  assert.equal((await source.runMigrations()).length, 4);
   assert.equal((await source.runMigrations()).length, 0);
   await seedDevelopment(source, password, 'test');
   await seedDevelopment(source, password, 'test');
@@ -73,6 +74,12 @@ async function login(email = SEED_EMAILS[0], override = {}) {
 }
 async function accessToken(email) { const response = await login(email); assert.equal(response.status, 200); return (await response.json()).accessToken; }
 function auth(token) { return { Authorization: `Bearer ${token}` }; }
+
+async function api(path, token, { method = 'GET', body } = {}) {
+  const headers = { ...auth(token) };
+  if (body !== undefined) headers['Content-Type'] = 'application/json';
+  return fetch(`${base}${path}`, { method, headers, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
+}
 
 test('credentials, strict login body, no-store and hashed session persistence', async () => {
   for (const body of [{ password: 'incorrect' }, { email: 'missing@fintrack.test' }]) {
@@ -145,16 +152,120 @@ test('domain query isolates persisted movements by authenticated session identit
   const service = app.get(TransactionsService);
   for (let i=0; i<users.length; i++) {
     const identity = await app.get(AuthService).authenticate(`Bearer ${await accessToken(users[i].email)}`);
-    const transactions = await service.listForUser(identity.userId);
+    const result = await service.listForUser(identity.userId, {});
+    const transactions = result.items;
     assert.equal(transactions.length, 8);
-    assert.ok(transactions.every(item => item.userId === users[i].id));
-    const baseline = transactions.filter(item => item.occurredAt >= new Date('2026-09-01T00:00:00Z'));
-    assert.deepEqual(baseline.map(item => item.amount), i === 0 ? ['2000.10','500.05'] : ['700.00','40.50']);
-    const demonstration = transactions.filter(item => item.occurredAt < new Date('2026-09-01T00:00:00Z'));
+    assert.ok(transactions.every(item => !('userId' in item)));
+    assert.equal(result.totalItems, 8);
+    const baseline = transactions.filter(item => new Date(item.occurredAt) >= new Date('2026-09-01T00:00:00Z'));
+    assert.deepEqual(baseline.map(item => item.amount), i === 0 ? ['500.05','2000.10'] : ['40.50','700.00']);
+    const demonstration = transactions.filter(item => new Date(item.occurredAt) < new Date('2026-09-01T00:00:00Z'));
     assert.equal(demonstration.length, 6);
     assert.equal(demonstration.reduce((total, item) => total + (item.type === 'income' ? 1n : -1n) * decimalToMinorUnits(item.amount), 0n), 0n);
   }
   await assert.rejects(service.listForUser(undefined));
+});
+
+test('transaction and category HTTP APIs validate contracts, isolate owners, filter pages, and void instead of deleting', async () => {
+  const ownerToken = await accessToken(SEED_EMAILS[0]);
+  const otherToken = await accessToken(SEED_EMAILS[1]);
+  const createdCategory = await api('/categories', ownerToken, { method: 'POST', body: { name: 'Module 2 category' } });
+  assert.equal(createdCategory.status, 201);
+  assert.equal(createdCategory.headers.get('Cache-Control'), 'no-store');
+  const category = await createdCategory.json();
+  assertContract('Category', category);
+  const otherCategories = await (await api('/categories', otherToken)).json();
+  assert.ok(!otherCategories.some(item => item.id === category.id));
+  assert.equal((await api('/categories', ownerToken, { method: 'POST', body: { name: category.name } })).status, 409);
+  assert.equal((await api('/categories', ownerToken, { method: 'POST', body: { name: 'forbidden', userId: users[1].id } })).status, 400);
+
+  const unassignedResponse = await api('/transactions', ownerToken, {
+    method: 'POST',
+    body: { type: 'income', amount: '0.25', occurredAt: '2026-10-19T12:00:00.000Z' },
+  });
+  assert.equal(unassignedResponse.status, 201);
+  const unassigned = await unassignedResponse.json();
+  assertContract('Transaction', unassigned);
+  assert.equal(unassigned.categoryId, null);
+  assert.equal(unassigned.categoryName, null);
+
+  const createdResponse = await api('/transactions', ownerToken, {
+    method: 'POST',
+    body: { type: 'expense', amount: '15.25', categoryId: category.id, occurredAt: '2026-10-18T12:00:00.000Z', description: 'module2-filter-marker' },
+  });
+  assert.equal(createdResponse.status, 201);
+  const created = await createdResponse.json();
+  assertContract('Transaction', created);
+  assert.equal(created.categoryName, category.name);
+  assert.ok(!('userId' in created));
+  assert.ok(!('refundOfId' in created));
+  assert.equal((await api('/transactions', otherToken, {
+    method: 'POST',
+    body: { type: 'expense', amount: '1.00', categoryId: category.id, occurredAt: '2026-10-18T12:00:00.000Z' },
+  })).status, 404);
+  assert.equal((await api('/transactions', ownerToken, {
+    method: 'POST',
+    body: { type: 'expense', amount: '1.00', occurredAt: '2026-10-18T12:00:00.000Z', userId: users[1].id },
+  })).status, 400);
+  for (const amount of ['0.00', '1.2', '1000000000000.00']) {
+    const response = await api('/transactions', ownerToken, {
+      method: 'POST',
+      body: { type: 'expense', amount, occurredAt: '2026-10-18T12:00:00.000Z' },
+    });
+    assert.equal(response.status, amount === '1000000000000.00' ? 422 : 400);
+  }
+  const filtered = await api('/transactions?type=expense&q=module2-filter-marker&page=1&pageSize=1', ownerToken);
+  assert.equal(filtered.status, 200);
+  const page = await filtered.json();
+  assertContract('TransactionPage', page);
+  assert.equal(page.totalItems, 1);
+  assert.equal(page.items[0].id, created.id);
+  assert.equal((await api('/transactions?userId=other', ownerToken)).status, 400);
+  assert.equal((await api('/transactions?type=expense&type=income', ownerToken)).status, 400);
+  assert.equal((await api(`/transactions/${created.id}`, otherToken)).status, 404);
+
+  const updatedResponse = await api(`/transactions/${created.id}`, ownerToken, {
+    method: 'PATCH',
+    body: { amount: '16.75', description: 'updated module 2' },
+  });
+  assert.equal(updatedResponse.status, 200);
+  const updated = await updatedResponse.json();
+  assertContract('Transaction', updated);
+  assert.equal(updated.amount, '16.75');
+  assert.equal(updated.description, 'updated module 2');
+  assert.equal((await api(`/transactions/${created.id}`, ownerToken, { method: 'PATCH', body: { amount: '1.00', userId: users[1].id } })).status, 400);
+  assert.equal((await api(`/transactions/${created.id}`, ownerToken, { method: 'DELETE' })).status, 204);
+  assert.equal((await api(`/transactions/${created.id}`, ownerToken, { method: 'DELETE' })).status, 204);
+  assert.equal((await api(`/transactions/${created.id}`, ownerToken, { method: 'PATCH', body: { description: 'cannot edit void' } })).status, 409);
+  const voidItem = await (await api(`/transactions/${created.id}`, ownerToken)).json();
+  assert.equal(voidItem.status, 'void');
+  const postedList = await (await api('/transactions', ownerToken)).json();
+  assert.ok(!postedList.items.some(item => item.id === created.id));
+  const voidList = await (await api('/transactions?status=void&q=updated', ownerToken)).json();
+  assert.ok(voidList.items.some(item => item.id === created.id));
+
+  const renamedResponse = await api(`/categories/${category.id}`, ownerToken, { method: 'PATCH', body: { name: 'Renamed module 2 category' } });
+  assert.equal(renamedResponse.status, 200);
+  assertContract('Category', await renamedResponse.json());
+  assert.equal((await api(`/categories/${category.id}`, ownerToken, { method: 'DELETE' })).status, 204);
+  assert.equal((await (await api(`/transactions/${created.id}`, ownerToken)).json()).categoryId, null);
+
+  const budgetCategoryResponse = await api('/categories', ownerToken, { method: 'POST', body: { name: 'Budget-linked category' } });
+  const budgetCategory = await budgetCategoryResponse.json();
+  const budgetId = randomUUID();
+  await source.getRepository(Budget).insert({
+    id: budgetId,
+    userId: users[0].id,
+    categoryId: budgetCategory.id,
+    month: '2100-01',
+    limit: '100.00',
+    currency: 'BOB',
+  });
+  assert.equal((await api(`/categories/${budgetCategory.id}`, ownerToken, { method: 'DELETE' })).status, 409);
+  assert.equal(await source.getRepository(Category).countBy({ id: budgetCategory.id, userId: users[0].id }), 1);
+  await source.getRepository(Budget).delete({ id: budgetId });
+  assert.equal((await api(`/categories/${budgetCategory.id}`, ownerToken, { method: 'DELETE' })).status, 204);
+  await source.query('DELETE FROM transactions WHERE id = ANY($1)', [[unassigned.id, created.id]]);
 });
 
 test('schema rejects cross-user categories/refunds, bad decimals, invalid opening and inconsistent updates', async () => {
@@ -619,7 +730,7 @@ test('budget and savings migrations upgrade existing BE01 users and seed preserv
     await upgrade.destroy();
     upgrade = createDataSource(url.toString());
     await upgrade.initialize();
-    assert.equal((await upgrade.runMigrations()).length, 2); // BE05 and BE06 follow the existing BE01 schema.
+    assert.equal((await upgrade.runMigrations()).length, 3); // Later migrations preserve existing BE01 data.
     await assert.rejects(seedDevelopment(upgrade, password, 'test')); // Existing future opening is not bypassed.
     assert.equal(await upgrade.getRepository(Budget).count(), 0);
     assert.equal((await upgrade.query('SELECT COUNT(*)::int AS count FROM categories'))[0].count, 0);
@@ -663,13 +774,18 @@ test('savings migration upgrades BE05 without changing existing users, movements
     await upgrade.query('INSERT INTO categories(id,user_id,name) VALUES($1,$2,\'Existing category\')', [categoryId,original.id]);
     await upgrade.query('INSERT INTO budgets(id,user_id,category_id,month,limit_amount) VALUES($1,$2,$3,\'2026-10\',\'123.45\')', [randomUUID(),original.id,categoryId]);
     await upgrade.query('INSERT INTO transactions(id,user_id,category_id,type,status,amount,occurred_at) VALUES($1,$2,$3,\'expense\',\'posted\',\'12.34\',\'2026-10-01T12:00:00Z\')', [randomUUID(),original.id,categoryId]);
-    const snapshot = async () => ({ users: await upgrade.query('SELECT * FROM users ORDER BY id'), budgets: await upgrade.query('SELECT * FROM budgets ORDER BY id'), movements: await upgrade.query('SELECT * FROM transactions ORDER BY id') });
+    const snapshot = async () => ({
+      users: await upgrade.query('SELECT * FROM users ORDER BY id'),
+      budgets: await upgrade.query('SELECT * FROM budgets ORDER BY id'),
+      movements: await upgrade.query('SELECT id,user_id,category_id,type,status,amount,currency,occurred_at,refund_of_id FROM transactions ORDER BY id'),
+    });
     const before = await snapshot();
     await upgrade.destroy();
     upgrade = createDataSource(url.toString());
     await upgrade.initialize();
-    assert.equal((await upgrade.runMigrations()).length, 1);
+    assert.equal((await upgrade.runMigrations()).length, 2);
     assert.deepEqual(await snapshot(), before);
+    assert.deepEqual(await upgrade.query('SELECT description FROM transactions'), [{ description: null }]);
     assert.equal(await upgrade.getRepository(SavingsGoal).count(), 0);
     await seedDevelopment(upgrade, password, 'test');
     const entries = await upgrade.query('SELECT * FROM savings_entries ORDER BY id');
@@ -677,7 +793,8 @@ test('savings migration upgrades BE05 without changing existing users, movements
     assert.deepEqual(await upgrade.query('SELECT * FROM savings_entries ORDER BY id'), entries);
     assert.deepEqual(await upgrade.query('SELECT * FROM users WHERE id=$1', [original.id]), before.users);
     assert.deepEqual(await upgrade.query('SELECT * FROM budgets WHERE id=$1', [before.budgets[0].id]), before.budgets);
-    assert.deepEqual(await upgrade.query('SELECT * FROM transactions WHERE id=$1', [before.movements[0].id]), before.movements);
+    assert.deepEqual(await upgrade.query('SELECT id,user_id,category_id,type,status,amount,currency,occurred_at,refund_of_id FROM transactions WHERE id=$1', [before.movements[0].id]), before.movements);
+    assert.deepEqual(await upgrade.query('SELECT description FROM transactions WHERE id=$1', [before.movements[0].id]), [{ description: null }]);
   } finally { if (upgrade.isInitialized) await upgrade.destroy(); await admin.query(`DROP DATABASE "${upgradeDatabase}"`); }
 });
 
@@ -909,12 +1026,14 @@ test('seed denies production and migrations can roll back and reapply on their o
   assert.ok(await source.getRepository(User).count() >= 2);
   await app.close(); app = undefined;
   await source.undoLastMigration();
+  assert.equal((await source.query("SELECT column_name FROM information_schema.columns WHERE table_name='transactions' AND column_name='description'"))[0], undefined);
+  await source.undoLastMigration();
   assert.equal((await source.query("SELECT to_regclass('public.savings_goals') AS name"))[0].name, null);
   await source.undoLastMigration();
   assert.equal((await source.query("SELECT to_regclass('public.budgets') AS name"))[0].name, null);
   await source.undoLastMigration();
   assert.equal((await source.query("SELECT to_regclass('public.users') AS name"))[0].name, null);
-  assert.equal((await source.runMigrations()).length, 3);
+  assert.equal((await source.runMigrations()).length, 4);
   await seedDevelopment(source, password, 'test');
   assert.equal(await source.getRepository(User).count(), 2);
 });

@@ -10,5 +10,6 @@ export class Transaction {
   @Column('numeric') amount!: string;
   @Column('varchar', { length: 3 }) currency!: string;
   @Column('timestamptz', { name: 'occurred_at' }) occurredAt!: Date;
+  @Column('varchar', { length: 500, nullable: true }) description!: string | null;
   @Column('uuid', { name: 'refund_of_id', nullable: true }) refundOfId!: string | null;
 }

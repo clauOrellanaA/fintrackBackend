@@ -1,0 +1,55 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "FinanTrack reports",
+    "version": "1.0.0",
+    "description": "BE-08 authenticated reports. All monetary values are exact BOB decimals serialized with two fractional digits."
+  },
+  "servers": [{"url": "http://localhost:3000/api/v1"}],
+  "security": [{"bearerSession": []}],
+  "paths": {
+    "/reports": {
+      "get": {
+        "operationId": "getReports",
+        "description": "Returns one authenticated user's comparison, expense distribution, and monthly available-balance evolution. Both query parameters are required exactly once; unknown parameters, userId, and repeated parameters are rejected. The local dates are inclusive in America/La_Paz and are translated to [start, next-day-after-to). Responses are private and never cacheable.",
+        "parameters": [
+          {"name": "from", "in": "query", "required": true, "schema": {"$ref": "#/components/schemas/ReportDate"}, "example": "2026-01-01", "description": "Inclusive local start date."},
+          {"name": "to", "in": "query", "required": true, "schema": {"$ref": "#/components/schemas/ReportDate"}, "example": "2026-03-31", "description": "Inclusive local end date. The range has at most 24 calendar months."}
+        ],
+        "responses": {
+          "200": {
+            "description": "Complete report for the requested period.",
+            "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}},
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Reports"}, "examples": {"range": {"summary": "Three-month report; amounts and identifiers are illustrative.", "value": {"period": {"from": "2026-01-01", "to": "2026-03-31", "timeZone": "America/La_Paz", "start": "2026-01-01T04:00:00.000Z", "endExclusive": "2026-04-01T04:00:00.000Z"}, "currency": "BOB", "asOf": "2026-10-20T12:00:00.000Z", "comparison": {"income": "1250.00", "expense": "450.00", "net": "800.00"}, "expenseDistribution": [{"categoryId": "11111111-1111-4111-8111-111111111111", "categoryName": "Alimentacion", "amount": "300.00", "percentage": "66.67"}, {"categoryId": null, "categoryName": "Sin categoria", "amount": "150.00", "percentage": "33.33"}], "balanceEvolution": [{"month": "2026-01", "amount": "1800.00", "cutoff": "2026-02-01T04:00:00.000Z"}, {"month": "2026-02", "amount": "2200.00", "cutoff": "2026-03-01T04:00:00.000Z"}, {"month": "2026-03", "amount": "2600.00", "cutoff": "2026-04-01T04:00:00.000Z"}]}}}}}
+          },
+          "400": {"$ref": "#/components/responses/InvalidReportPeriod"},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "422": {"$ref": "#/components/responses/OutOfRange"},
+          "500": {"$ref": "#/components/responses/InternalError"},
+          "503": {"$ref": "#/components/responses/Unavailable"}
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {"bearerSession": {"type": "http", "scheme": "bearer", "description": "Opaque bearer session token."}},
+    "responses": {
+      "InvalidReportPeriod": {"description": "INVALID_REPORT_PERIOD: missing, malformed, repeated, unknown, userId, reversed, out-of-range, or wider-than-24-calendar-month query.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}, "examples": {"invalidPeriod": {"value": {"error": {"code": "INVALID_REPORT_PERIOD", "message": "from y to deben formar un rango local valido de hasta 24 meses."}}}}}}},
+      "Unauthorized": {"description": "UNAUTHENTICATED: bearer session is absent, invalid, expired, or revoked.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}, "examples": {"unauthenticated": {"value": {"error": {"code": "UNAUTHENTICATED", "message": "Sesion requerida o invalida."}}}}}}},
+      "OutOfRange": {"description": "DATA_OUT_OF_RANGE: an exact monetary aggregate cannot be represented by the API contract.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}, "examples": {"outOfRange": {"value": {"error": {"code": "DATA_OUT_OF_RANGE", "message": "El importe supera el limite permitido."}}}}}}},
+      "InternalError": {"description": "INTERNAL_ERROR or DATA_INTEGRITY_ERROR. The response does not disclose SQL or secrets and never returns a partial report.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}, "examples": {"integrity": {"value": {"error": {"code": "DATA_INTEGRITY_ERROR", "message": "Los datos financieros no son validos."}}}}}}},
+      "Unavailable": {"description": "DATA_UNAVAILABLE: storage cannot serve the report. No zero-filled or partial replacement is returned.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}, "examples": {"unavailable": {"value": {"error": {"code": "DATA_UNAVAILABLE", "message": "No se pudo consultar el servicio."}}}}}}}
+    },
+    "schemas": {
+      "ReportDate": {"type": "string", "pattern": "^(?:19[0-9]{2}|[2-8][0-9]{3}|9[0-8][0-9]{2}|99[0-8][0-9]|999[0-8])-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12][0-9]|3[01])$", "description": "Calendar date from 1900-01-01 through 9998-12-31; implementation rejects nonexistent month days."},
+      "Money": {"type": "string", "pattern": "^-?(0|[1-9][0-9]{0,11})\\.[0-9]{2}$", "description": "Exact BOB decimal, canonical zero 0.00, abs <= 999999999999.99."},
+      "Percent": {"type": "string", "pattern": "^(0|[1-9][0-9]*)\\.[0-9]{2}$", "description": "Independently rounded HALF_UP percentage."},
+      "ReportPeriod": {"type": "object", "additionalProperties": false, "required": ["from", "to", "timeZone", "start", "endExclusive"], "properties": {"from": {"$ref": "#/components/schemas/ReportDate"}, "to": {"$ref": "#/components/schemas/ReportDate"}, "timeZone": {"const": "America/La_Paz"}, "start": {"type": "string", "format": "date-time"}, "endExclusive": {"type": "string", "format": "date-time"}}},
+      "Comparison": {"type": "object", "additionalProperties": false, "description": "Gross posted movements in the full requested date range. Refunds are income, void movements are excluded, and net is income minus expense.", "required": ["income", "expense", "net"], "properties": {"income": {"$ref": "#/components/schemas/Money"}, "expense": {"$ref": "#/components/schemas/Money"}, "net": {"$ref": "#/components/schemas/Money"}}},
+      "CategoryExpense": {"type": "object", "additionalProperties": false, "description": "Posted gross expense in the requested date range, grouped by the authenticated user's category. Null category is represented as Sin categoria. Ordered by amount descending, then categoryId ascending, with null last on ties. Percentages use independent HALF_UP and are not adjusted to force a sum of 100.00.", "required": ["categoryId", "categoryName", "amount", "percentage"], "properties": {"categoryId": {"type": ["string", "null"], "format": "uuid"}, "categoryName": {"type": "string"}, "amount": {"$ref": "#/components/schemas/Money"}, "percentage": {"$ref": "#/components/schemas/Percent"}}},
+      "BalanceEvolutionPoint": {"type": "object", "additionalProperties": false, "description": "Available balance for this local calendar month: opening balance plus posted movements minus persisted savings reservations. cutoff is min(local end of month, asOf); future months are present but not projected beyond asOf.", "required": ["month", "amount", "cutoff"], "properties": {"month": {"type": "string", "pattern": "^(?:19[0-9]{2}|[2-8][0-9]{3}|9[0-8][0-9]|99[0-8][0-9]|999[0-8])-(?:0[1-9]|1[0-2])$"}, "amount": {"$ref": "#/components/schemas/Money"}, "cutoff": {"type": "string", "format": "date-time"}}},
+      "Reports": {"type": "object", "additionalProperties": false, "required": ["period", "currency", "asOf", "comparison", "expenseDistribution", "balanceEvolution"], "properties": {"period": {"$ref": "#/components/schemas/ReportPeriod"}, "currency": {"const": "BOB"}, "asOf": {"type": "string", "format": "date-time", "description": "Single server capture used for every monthly cutoff."}, "comparison": {"$ref": "#/components/schemas/Comparison"}, "expenseDistribution": {"type": "array", "description": "Empty after a successful query when the range has no posted expenses.", "items": {"$ref": "#/components/schemas/CategoryExpense"}}, "balanceEvolution": {"type": "array", "description": "Exactly one point for every calendar month intersecting the requested date range, in ascending month order.", "items": {"$ref": "#/components/schemas/BalanceEvolutionPoint"}}}},
+      "Error": {"type": "object", "additionalProperties": false, "required": ["error"], "properties": {"error": {"type": "object", "additionalProperties": false, "required": ["code", "message"], "properties": {"code": {"type": "string"}, "message": {"type": "string"}}}}}
+    }
+  }
+}

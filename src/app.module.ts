@@ -5,9 +5,10 @@ import { PersistenceModule } from './database/persistence.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { TransactionsModule } from './modules/transactions/transactions.module';
+import { ReportsModule } from './modules/reports/reports.module';
 import { APP_FILTER } from '@nestjs/core';
 import { ApiExceptionFilter } from './shared/filters/api-exception.filter';
 
-@Module({ imports: [PersistenceModule, AuthModule, DashboardModule, TransactionsModule], controllers: [HealthController],
+@Module({ imports: [PersistenceModule, AuthModule, DashboardModule, TransactionsModule, ReportsModule], controllers: [HealthController],
   providers: [DatabaseService, { provide: APP_FILTER, useClass: ApiExceptionFilter }] })
 export class AppModule {}

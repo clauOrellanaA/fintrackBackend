@@ -157,7 +157,7 @@ test('registration, owned profile updates and password change revoke all session
   const historicalConflict = await api('/users/me', token, { method: 'PATCH', body: { openingDate: '2022-01-01' } });
   assert.equal(historicalConflict.status, 409);
   assert.equal((await historicalConflict.json()).error.code, 'OPENING_DATE_CONFLICT');
-  assert.equal((await register({ email: 'NEW.USER@FINTRACK.TEST', password: 'long-enough-password', displayName: 'Duplicate' })).status, 409);
+  assert.equal((await register({ email: SEED_EMAILS[0], password: 'long-enough-password', displayName: 'Duplicate' })).status, 409);
 
   assert.equal((await api('/auth/password', token, { method: 'POST', body: { currentPassword: 'incorrect', newPassword: 'new-long-password' } })).status, 401);
   assert.equal((await api('/auth/password', token, { method: 'POST', body: { currentPassword: 'long-enough-password', newPassword: 'short' } })).status, 400);

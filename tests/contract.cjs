@@ -8,7 +8,8 @@ const openapi = JSON.parse(readFileSync(join(__dirname, '../docs/openapi/dashboa
 const transactionsOpenapi = JSON.parse(readFileSync(join(__dirname, '../docs/openapi/transactions.v1.json'), 'utf8'));
 const budgetsOpenapi = JSON.parse(readFileSync(join(__dirname, '../docs/openapi/budgets.v1.json'), 'utf8'));
 const reportsOpenapi = JSON.parse(readFileSync(join(__dirname, '../docs/openapi/reports.v1.json'), 'utf8'));
-const documents = [openapi, transactionsOpenapi, budgetsOpenapi, reportsOpenapi];
+const usersOpenapi = JSON.parse(readFileSync(join(__dirname, '../docs/openapi/users.v1.json'), 'utf8'));
+const documents = [openapi, transactionsOpenapi, budgetsOpenapi, reportsOpenapi, usersOpenapi];
 const ajv = new Ajv2020({ allErrors: true });
 addFormats(ajv);
 const validators = new Map();
@@ -25,4 +26,4 @@ function assertContract(name, value) {
   assert.ok(validate(value), `${name} violates OpenAPI: ${JSON.stringify(validate.errors)}`);
 }
 
-module.exports = { assertContract, openapi, transactionsOpenapi, budgetsOpenapi, reportsOpenapi };
+module.exports = { assertContract, openapi, transactionsOpenapi, budgetsOpenapi, reportsOpenapi, usersOpenapi };

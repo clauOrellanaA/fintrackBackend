@@ -43,7 +43,7 @@ before(async () => {
   process.env.NODE_ENV = 'test';
   source = createDataSource(process.env.DATABASE_URL);
   await source.initialize();
-  assert.equal((await source.runMigrations()).length, 4);
+  assert.equal((await source.runMigrations()).length, 5);
   assert.equal((await source.runMigrations()).length, 0);
   await seedDevelopment(source, password, 'test');
   await seedDevelopment(source, password, 'test');
@@ -101,6 +101,77 @@ test('credentials, strict login body, no-store and hashed session persistence', 
   const hashes = await source.query('SELECT password_hash FROM users');
   assert.notEqual(hashes[0].password_hash, hashes[1].password_hash);
   assert.ok(hashes.every(row => !row.password_hash.includes(password)));
+});
+
+test('registration, owned profile updates and password change revoke all sessions', async () => {
+  const register = (body) => fetch(`${base}/auth/register`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+  });
+  for (const body of [
+    { email: 'invalid', password: 'long-enough-password', displayName: 'New user' },
+    { email: 'new.user@fintrack.test', password: 'short', displayName: 'New user' },
+    { email: 'new.user@fintrack.test', password: 'long-enough-password', displayName: ' ' },
+    { email: 'new.user@fintrack.test', password: 'long-enough-password', displayName: 'New user', currency: 'USD' },
+  ]) assert.equal((await register(body)).status, 400);
+
+  const created = await register({ email: ' New.User@Fintrack.test ', password: 'long-enough-password', displayName: 'New user' });
+  assert.equal(created.status, 201);
+  assert.equal(created.headers.get('Cache-Control'), 'no-store');
+  const createdSession = await created.json();
+  assertContract('Session', createdSession);
+  const user = await source.getRepository(User).findOneByOrFail({ email: 'new.user@fintrack.test' });
+  assert.equal(user.displayName, 'New user');
+  assert.equal(user.openingBalance, '0.00');
+  const token = createdSession.accessToken;
+  const secondLogin = await login('new.user@fintrack.test', { password: 'long-enough-password' });
+  assert.equal(secondLogin.status, 200);
+  const secondToken = (await secondLogin.json()).accessToken;
+  assert.equal((await fetch(`${base}/users/me`)).status, 401);
+  const profileResponse = await api('/users/me', token);
+  assert.equal(profileResponse.status, 200);
+  assert.equal(profileResponse.headers.get('Cache-Control'), 'no-store');
+  const profile = await profileResponse.json();
+  assertContract('Profile', profile);
+  assert.equal(profile.email, 'new.user@fintrack.test');
+  assert.equal(profile.displayName, 'New user');
+  assert.equal(profile.currency, 'BOB');
+
+  const changed = await api('/users/me', token, {
+    method: 'PATCH',
+    body: { email: 'new.address@fintrack.test', displayName: 'Updated name', openingBalance: '125.50', openingDate: '2020-01-01' },
+  });
+  assert.equal(changed.status, 200);
+  assert.deepEqual(await changed.json(), {
+    email: 'new.address@fintrack.test', displayName: 'Updated name', openingBalance: '125.50', openingDate: '2020-01-01', currency: 'BOB',
+  });
+  assert.equal((await api('/users/me', token, { method: 'PATCH', body: { email: SEED_EMAILS[0] } })).status, 409);
+  const invalidDate = await api('/users/me', token, { method: 'PATCH', body: { openingDate: '9999-01-01' } });
+  assert.equal(invalidDate.status, 409);
+  assert.equal((await invalidDate.json()).error.code, 'INVALID_OPENING_DATE');
+  assert.equal((await api('/users/me', token, { method: 'PATCH', body: { currency: 'USD' } })).status, 400);
+
+  await source.query(
+    "INSERT INTO transactions(id,user_id,type,status,amount,currency,occurred_at) VALUES($1,$2,'income','posted','10.00','BOB','2021-01-01T12:00:00Z')",
+    [randomUUID(), user.id],
+  );
+  const historicalConflict = await api('/users/me', token, { method: 'PATCH', body: { openingDate: '2022-01-01' } });
+  assert.equal(historicalConflict.status, 409);
+  assert.equal((await historicalConflict.json()).error.code, 'OPENING_DATE_CONFLICT');
+  assert.equal((await register({ email: SEED_EMAILS[0], password: 'long-enough-password', displayName: 'Duplicate' })).status, 409);
+
+  assert.equal((await api('/auth/password', token, { method: 'POST', body: { currentPassword: 'incorrect', newPassword: 'new-long-password' } })).status, 401);
+  assert.equal((await api('/auth/password', token, { method: 'POST', body: { currentPassword: 'long-enough-password', newPassword: 'short' } })).status, 400);
+  const changedPassword = await api('/auth/password', token, {
+    method: 'POST', body: { currentPassword: 'long-enough-password', newPassword: 'new-long-password' },
+  });
+  assert.equal(changedPassword.status, 204);
+  assert.equal(await changedPassword.text(), '');
+  assert.equal((await api('/users/me', token)).status, 401);
+  assert.equal((await api('/users/me', secondToken)).status, 401);
+  assert.equal((await login('new.address@fintrack.test', { password: 'long-enough-password' })).status, 401);
+  assert.equal((await login('new.address@fintrack.test', { password: 'new-long-password' })).status, 200);
+  const sessions = await source.getRepository(Session).findBy({ userId: user.id });
+  assert.equal(sessions.filter(session => session.revokedAt === null).length, 1);
 });
 
 test('HTTP guard rejects missing/malformed/expired/revoked session before validating period', async () => {
@@ -815,7 +886,7 @@ test('budget and savings migrations upgrade existing BE01 users and seed preserv
     await upgrade.destroy();
     upgrade = createDataSource(url.toString());
     await upgrade.initialize();
-    assert.equal((await upgrade.runMigrations()).length, 3); // Later migrations preserve existing BE01 data.
+    assert.equal((await upgrade.runMigrations()).length, 4); // Later migrations preserve existing BE01 data.
     await assert.rejects(seedDevelopment(upgrade, password, 'test')); // Existing future opening is not bypassed.
     assert.equal(await upgrade.getRepository(Budget).count(), 0);
     assert.equal((await upgrade.query('SELECT COUNT(*)::int AS count FROM categories'))[0].count, 0);
@@ -860,7 +931,7 @@ test('savings migration upgrades BE05 without changing existing users, movements
     await upgrade.query('INSERT INTO budgets(id,user_id,category_id,month,limit_amount) VALUES($1,$2,$3,\'2026-10\',\'123.45\')', [randomUUID(),original.id,categoryId]);
     await upgrade.query('INSERT INTO transactions(id,user_id,category_id,type,status,amount,occurred_at) VALUES($1,$2,$3,\'expense\',\'posted\',\'12.34\',\'2026-10-01T12:00:00Z\')', [randomUUID(),original.id,categoryId]);
     const snapshot = async () => ({
-      users: await upgrade.query('SELECT * FROM users ORDER BY id'),
+      users: await upgrade.query('SELECT id,email,password_hash,opening_balance,opening_at,currency FROM users ORDER BY id'),
       budgets: await upgrade.query('SELECT * FROM budgets ORDER BY id'),
       movements: await upgrade.query('SELECT id,user_id,category_id,type,status,amount,currency,occurred_at,refund_of_id FROM transactions ORDER BY id'),
     });
@@ -868,7 +939,7 @@ test('savings migration upgrades BE05 without changing existing users, movements
     await upgrade.destroy();
     upgrade = createDataSource(url.toString());
     await upgrade.initialize();
-    assert.equal((await upgrade.runMigrations()).length, 2);
+    assert.equal((await upgrade.runMigrations()).length, 3);
     assert.deepEqual(await snapshot(), before);
     assert.deepEqual(await upgrade.query('SELECT description FROM transactions'), [{ description: null }]);
     assert.equal(await upgrade.getRepository(SavingsGoal).count(), 0);
@@ -876,7 +947,7 @@ test('savings migration upgrades BE05 without changing existing users, movements
     const entries = await upgrade.query('SELECT * FROM savings_entries ORDER BY id');
     await seedDevelopment(upgrade, password, 'test');
     assert.deepEqual(await upgrade.query('SELECT * FROM savings_entries ORDER BY id'), entries);
-    assert.deepEqual(await upgrade.query('SELECT * FROM users WHERE id=$1', [original.id]), before.users);
+    assert.deepEqual(await upgrade.query('SELECT id,email,password_hash,opening_balance,opening_at,currency FROM users WHERE id=$1', [original.id]), before.users);
     assert.deepEqual(await upgrade.query('SELECT * FROM budgets WHERE id=$1', [before.budgets[0].id]), before.budgets);
     assert.deepEqual(await upgrade.query('SELECT id,user_id,category_id,type,status,amount,currency,occurred_at,refund_of_id FROM transactions WHERE id=$1', [before.movements[0].id]), before.movements);
     assert.deepEqual(await upgrade.query('SELECT description FROM transactions WHERE id=$1', [before.movements[0].id]), [{ description: null }]);
@@ -1132,6 +1203,8 @@ test('seed denies production and migrations can roll back and reapply on their o
   assert.ok(await source.getRepository(User).count() >= 2);
   await app.close(); app = undefined;
   await source.undoLastMigration();
+  assert.equal((await source.query("SELECT column_name FROM information_schema.columns WHERE table_name='users' AND column_name='display_name'"))[0], undefined);
+  await source.undoLastMigration();
   assert.equal((await source.query("SELECT column_name FROM information_schema.columns WHERE table_name='transactions' AND column_name='description'"))[0], undefined);
   await source.undoLastMigration();
   assert.equal((await source.query("SELECT to_regclass('public.savings_goals') AS name"))[0].name, null);
@@ -1139,7 +1212,7 @@ test('seed denies production and migrations can roll back and reapply on their o
   assert.equal((await source.query("SELECT to_regclass('public.budgets') AS name"))[0].name, null);
   await source.undoLastMigration();
   assert.equal((await source.query("SELECT to_regclass('public.users') AS name"))[0].name, null);
-  assert.equal((await source.runMigrations()).length, 4);
+  assert.equal((await source.runMigrations()).length, 5);
   await seedDevelopment(source, password, 'test');
   assert.equal(await source.getRepository(User).count(), 2);
 });

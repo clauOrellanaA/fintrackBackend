@@ -1,83 +1,137 @@
-# FinanTrack - backend
+# FinanTrack — backend
 
-Despliegue: [guia de Render, migraciones y primer usuario](docs/render-deployment.md).
-
-Sistema web para la gestion y el control de finanzas personales.
+API para gestionar finanzas personales: ingresos, gastos, categorías y presupuestos. El dashboard reúne saldo disponible, ingresos y gastos mensuales, distribución de gastos por categoría, presupuestos y metas de ahorro. Cada usuario accede únicamente a sus datos mediante una sesión autenticada.
 
 Equipo **Cosa1ycosa2**: Luciana Salinas y Claudia Orellana.
 
-## Estado
+## Tecnologías y alcance
 
-BE-01 implementa TypeORM/PostgreSQL, migracion de usuarios, sesiones, categorias y movimientos, login/logout y dashboard protegido con validacion de mes. BE-02 agrega saldo acumulado; BE-03 ingresos y gastos mensuales; BE-04 distribucion por categoria; BE-05 indicadores de presupuestos por categoria/mes con limite, consumo, restante, progreso y estado exactos. BE-06 agrega metas y reservas persistidas; las cinco secciones estan disponibles. El modulo 2 agrega gestion autenticada de movimientos y categorias, junto con una migracion aditiva para `description`; su implementacion y pruebas estan completadas en el worktree asignado y pendientes de integracion mediante PR. El health check `pg` sigue independiente de la persistencia ORM.
+Backend construido con **Node.js, NestJS 11, TypeScript, TypeORM 0.3 y PostgreSQL 17**. Los dominios están en `src/modules`; configuración y migraciones, en `src/config` y `src/database`.
 
-## Desarrollo local
+Incluye inicio y cierre de sesión, gestión de movimientos, categorías y presupuestos, y consulta del dashboard. Las metas y reservas persistidas se consultan en el dashboard; no tienen endpoints públicos de gestión. No hay registro público ni integración bancaria.
 
-Requiere Node.js 22.12 o superior (validado con Node 24), npm y Docker Desktop iniciado con contenedores Linux. En PowerShell se puede usar `npm.cmd` si se bloquea `npm.ps1`.
+Los importes usan decimales exactos en BOB y se devuelven como cadenas con dos decimales. Los periodos mensuales usan `America/La_Paz`. Las contraseñas se guardan con hash scrypt; las sesiones utilizan tokens bearer opacos, revocables y válidos durante ocho horas.
+
+## Requisitos técnicos
+
+- Node.js **22.12 o superior**; la CI usa Node 24.
+- npm y dependencias fijadas en `package-lock.json`.
+- Docker Desktop iniciado con contenedores Linux y Docker Compose.
+- Puertos `3000` (API) y `5432` (PostgreSQL) libres.
+
+Los comandos siguientes usan PowerShell. Si se bloquea `npm.ps1`, usa `npm.cmd`. Docker ejecuta PostgreSQL; la API se ejecuta con Node en tu computadora.
+
+## Levantar el proyecto en local
+
+### 1. Instalar y configurar
+
+Desde la carpeta del repositorio o del worktree:
 
 ```powershell
-cd C:\fintrack\fintrackBackend
 npm ci
 npm run setup
+```
+
+`setup` prepara automáticamente la configuración local con credenciales PostgreSQL aleatorias y entorno de desarrollo. Si ya existe configuración, la conserva. Comprueba que la conexión apunte a tu PostgreSQL local antes de migrar o cargar datos. Mantén separadas la configuración local y la de Render.
+
+### 2. Iniciar PostgreSQL y migrar
+
+Con Docker Desktop iniciado:
+
+```powershell
 npm run db:config
 npm run db:up
 npm run db:migrate
+```
+
+`db:config` valida Compose; `db:up` espera a que PostgreSQL esté disponible; `db:migrate` compila y aplica las migraciones pendientes. TypeORM usa `synchronize=false`: el esquema cambia mediante migraciones explícitas.
+
+### 3. Cargar los usuarios de prueba
+
+En la misma terminal, elige una contraseña local de 12 a 1024 caracteres y carga los datos de prueba:
+
+```powershell
+$env:SEED_PASSWORD = Read-Host 'Contraseña local de prueba (mínimo 12 caracteres)'
+npm run db:seed
+Remove-Item Env:SEED_PASSWORD
+```
+
+Al terminar debe aparecer `Seed local completado.`. Se crean dos usuarios con datos ficticios independientes:
+
+| Correo | Contraseña |
+| --- | --- |
+| `alice@fintrack.test` | Contraseña elegida al cargar los datos de prueba |
+| `bob@fintrack.test` | Contraseña elegida al cargar los datos de prueba |
+
+No hay contraseña pública predeterminada. Cambiar `SEED_PASSWORD` o repetir el seed **no cambia contraseñas existentes**. El seed conserva los datos y evita duplicar sus registros; solo se permite en `development` o `test`.
+
+Consulta **octubre de 2026** para ver gastos de ejemplo y **febrero de 2026** para tres presupuestos por usuario con consumos del 80 %, 100 % y superiores al límite. Hay ingresos en septiembre de 2026 y metas con aportes y retiros en marzo de 2026. El saldo es acumulado y las metas dependen de la fecha de consulta; no todos los indicadores se limitan al mes seleccionado.
+
+### 4. Iniciar y comprobar la API
+
+```powershell
 npm run start:dev
 ```
 
-`setup` crea `.env` solo si no existe, con contrasena PostgreSQL aleatoria. No imprime su valor. Si ya copiaste el ejemplo manualmente, sustituye sus valores de muestra y manten la contrasena de DATABASE_URL sincronizada con POSTGRES_PASSWORD. Las sesiones son opacas: no necesitan JWT_SECRET; esa variable de configuraciones antiguas ya no se utiliza. Las migraciones solo se aplican explicitamente, nunca al iniciar la API, y `synchronize` permanece desactivado.
+Compila, inicia la API y la reinicia al editar TypeScript. Comprueba:
 
-- API: http://localhost:3000/api/v1/health (vida del proceso, no verifica la base).
-- Base: http://localhost:3000/api/v1/health/ready (`SELECT 1`; devuelve 503 si PostgreSQL no responde).
-- `npm run db:status` y `npm run db:logs`: diagnostico de PostgreSQL.
-- `npm run db:down`: detiene Compose sin eliminar el volumen.
-- Ctrl+C detiene la API. PostgreSQL sigue activo hasta ejecutar `db:down`.
+- [Estado de la API](http://localhost:3000/api/v1/health): verifica el proceso.
+- [Conexión PostgreSQL](http://localhost:3000/api/v1/health/ready): devuelve `{"status":"ok","database":"connected"}` si la base responde; `503` si no está disponible.
 
-Verificacion: `npm run lint`, `npm run typecheck`, `npm run build`. Para ejecutar el compilado: `npm run build` y despues `npm start`. `npm run dev` y `npm run start:dev` recompilan y reinician al editar TypeScript.
+Para ejecutar el compilado sin modo de desarrollo, usa `npm run build` y después `npm start`.
 
-Si Docker informa que no encuentra el motor, abrir Docker Desktop y esperar a que este listo. Si 5432 esta ocupado, resolver el conflicto o ajustar el puerto publicado y DATABASE_URL juntos. Cambiar POSTGRES_PASSWORD no cambia la contrasena de un volumen existente; conservar las credenciales originales o realizar una rotacion explicita, sin eliminar datos para resolverlo.
+## Usuarios de prueba en Render
 
-Los scripts, configuraciones y lockfile se versionan. `.env`, `node_modules` y `dist` estan excluidos por `.gitignore`. Consultar [contrato aprobado](docs/dashboard-contract.md) y [OpenAPI](docs/openapi/dashboard.v1.json).
+Estas cuentas pertenecen a la base de datos desplegada en Render. Completa la tabla con la contraseña asignada a cada usuario en ese entorno.
 
-## Seed y acceso local
+| Usuario | Correo | Contraseña en Render |
+| --- | --- | --- |
+| Alice | `alice@fintrack.test` | **[Escribir contraseña]** |
+| Bob | `bob@fintrack.test` | **[Escribir contraseña]** |
 
-Tras migrar una base de desarrollo, configurar `NODE_ENV=development` y un `SEED_PASSWORD` local de entre 12 y 1024 caracteres (en `.env` o variable del proceso), despues ejecutar `npm run db:seed`. Crea `alice@fintrack.test` y `bob@fintrack.test` con aperturas explicitas, categorias y movimientos distintos. Repetirlo no duplica ni borra datos y no cambia passwords existentes. No registra password ni token. Se rechaza fuera de development/test y no se ejecuta automaticamente.
+Editar esta tabla solo documenta las credenciales; no cambia las contraseñas guardadas en la base de datos.
 
-BE-05 agrega una segunda migracion para budgets; ejecuta `npm run db:migrate` antes de repetir el seed sobre una base BE-01. El seed amplia tambien usuarios existentes: tres presupuestos en febrero2026 (80%,100%,excedido), limite100.00 para alice y200.00 para bob. Agrega seis movimientos demo por persona, tres gastos y tres ingresos compensatorios al mismo instante: saldo acumulado y datos de octubre no cambian. IDs deterministas evitan duplicados incluso al revertir/reaplicar la migracion de budgets. Presupuestos, passwords, aperturas y movimientos preexistentes no se sobreescriben. Una apertura posterior a los datos demo causa rollback completo, sin omitir su validacion.
+## Acceso a la API
 
-`POST /api/v1/auth/login` con JSON `{"email":"alice@fintrack.test","password":"<tu password local>"}` obtiene token aleatorio valido 8 horas. Usar `Authorization: Bearer <token>` en `GET /api/v1/dashboard?month=2026-10`; `DELETE /api/v1/auth/session` lo revoca. No enviar userId. Proteger HTTP con HTTPS fuera de localhost; el frontend conserva token solo en memoria. No existe registro publico; el modulo 2 cubre movimientos y categorias segun su OpenAPI, sin integraciones bancarias ni operaciones financieras reales.
+Envía `POST http://localhost:3000/api/v1/auth/login` con `Content-Type: application/json` y este cuerpo, sustituyendo el marcador por tu contraseña local:
 
-## Pruebas reales
-
-`npm test` compila y ejecuta node:test; requiere `TEST_DATABASE_URL` a una instancia dedicada cuya base se llame exactamente `fintrack_be01_test` y un rol con CREATEDB. La suite crea su propia base aleatoria, migra desde vacio, prueba HTTP y propiedad de datos, y elimina unicamente esa base al terminar. Nunca usa DATABASE_URL de desarrollo como destino de pruebas; si falta TEST_DATABASE_URL, falla explicitamente. No apuntar a la instancia del usuario.
-
-Ejemplo de instancia aislada (credenciales exclusivamente de prueba, puerto separado):
-
-```powershell
-docker run --detach --name fintrack-be01-postgres-test --publish 127.0.0.1:16432:5432 --env POSTGRES_DB=fintrack_be01_test --env POSTGRES_USER=fintrack_test --env POSTGRES_PASSWORD=isolated-test-only postgres:17-alpine
-$env:TEST_DATABASE_URL = 'postgresql://fintrack_test:isolated-test-only@127.0.0.1:16432/fintrack_be01_test'
-npm test
+```json
+{
+  "email": "alice@fintrack.test",
+  "password": "<tu contraseña local>"
+}
 ```
 
-Esperar a que PostgreSQL acepte conexiones antes de ejecutar la suite. CI usa un servicio PostgreSQL 17 dedicado y ejecuta los mismos tests junto a npm ci, lint, tipos y build. La suite incluye BE-02 a BE-06, migraciones desde vacio y actualizaciones desde BE-01/BE-05, retiros concurrentes y seed completo. Ver evidencias [BE-02](docs/be-02-delivery.md), [BE-03](docs/be-03-delivery.md), [BE-04](docs/be-04-delivery.md) y [BE-05](docs/be-05-delivery.md) y [BE-06](docs/be-06-delivery.md) para casos y reservas persistidas.
+La respuesta contiene `accessToken`, `tokenType` y `expiresAt`. Envía `Authorization: Bearer <accessToken>` en peticiones privadas, por ejemplo `GET /api/v1/dashboard?month=2026-10`. No envíes `userId`: la identidad se obtiene de la sesión. `DELETE /api/v1/auth/session` revoca el token.
 
-## Arquitectura
+| Recurso | Operaciones |
+| --- | --- |
+| `/api/v1/dashboard` | Consultar los cinco indicadores del panel |
+| `/api/v1/transactions` | Listar y crear; consultar, editar o anular mediante `/{id}` |
+| `/api/v1/categories` | Listar y crear; editar o eliminar mediante `/{id}` |
+| `/api/v1/budgets` | Listar y crear; editar o eliminar mediante `/{id}` |
 
-Frontend: React + TypeScript + Vite, organizado en src/features.
-Backend: Node.js + NestJS + TypeScript, organizado en src/modules.
-Persistencia: PostgreSQL. Infraestructura prevista: Docker Compose.
+Los esquemas, filtros y errores están en OpenAPI: [dashboard y autenticación](docs/openapi/dashboard.v1.json), [movimientos y categorías](docs/openapi/transactions.v1.json) y [presupuestos](docs/openapi/budgets.v1.json). Credenciales rechazadas devuelven `401 INVALID_CREDENTIALS`; una sesión ausente, vencida o revocada devuelve `401 UNAUTHENTICATED`.
 
-Repositorios hermanos: ../fintrackFrontend y ../fintrackBackend. Cada uno tiene historial Git independiente. Los remotos de GitHub deben configurarse cuando se disponga de sus URLs.
+## Operación y verificaciones
 
-Consultar [arquitectura](docs/architecture.md), [integracion](docs/integration.md) y [flujo Git](CONTRIBUTING.md).
+| Comando | Uso |
+| --- | --- |
+| `npm run db:status` | Ver el estado de PostgreSQL |
+| `npm run db:logs` | Consultar logs de la base |
+| `npm run db:down` | Detener PostgreSQL conservando el volumen |
+| `npm run lint` | Revisar código con ESLint |
+| `npm run typecheck` | Comprobar tipos TypeScript |
+| `npm run build` | Generar el compilado en `dist` |
 
-## Metas y reservas BE-06
+Ctrl+C detiene la API; PostgreSQL sigue activo hasta `db:down`. Si Docker no encuentra el motor, inicia Docker Desktop. Si `5432` está ocupado, resuelve el conflicto o ajusta el puerto publicado de Compose y `DATABASE_URL` juntos. Cambiar `POSTGRES_PASSWORD` no cambia la contraseña de un volumen existente: conserva sus credenciales o realiza una rotación explícita.
 
-Ejecutar `npm run db:migrate` aplica la tercera migracion antes de usar BE-06. El seed agrega seis metas por usuario (cinco visibles y una archivada), aportes y retiros reales, sin movimientos income/expense compensatorios. Reserva neta: alice 300.00, bob 600.00; saldo disponible demo al 2026-10-19: 2200.05 y 259.50 respectivamente. Aperturas, contrasenas, ocho movimientos previos por usuario y resumen mensual no se modifican. Repetir seed no duplica metas ni aportes.
+`npm test` compila y ejecuta pruebas de contratos, migraciones y HTTP/PostgreSQL. Requiere una **instancia PostgreSQL aislada**: `TEST_DATABASE_URL` debe apuntar a una base llamada exactamente `fintrack_be01_test`, con un rol que pueda crear bases (`CREATEDB`). La suite crea bases temporales propias y las elimina al terminar. No uses tu instancia de desarrollo ni una base de Render con datos que quieras conservar. La CI configura PostgreSQL 17 dedicado y ejecuta estas pruebas junto con lint, tipos y build.
 
-Archivar solo oculta: no libera la reserva. Un retiro explicito la libera, incluso en una meta archivada. El registro de ahorro conserva el historial: se agregan aportes/retiros, no se editan ni eliminan entradas. La base rechaza retiros que dejen negativo un saldo efectivo y serializa escritores; una transaccion REPEATABLE READ obsoleta falla con 40001 y el llamador debe reintentar toda su transaccion. No hay CRUD publico de metas en esta entrega.
+## Documentación adicional
 
-## Validacion integrada BE-07
+- [Arquitectura](docs/architecture.md), [integración](docs/integration.md) y [contribución](CONTRIBUTING.md).
+- [Contrato del dashboard](docs/dashboard-contract.md) y [validación integrada del dashboard](docs/be-07-delivery.md).
+- [Render: despliegue, migraciones y primer usuario](docs/render-deployment.md). `start:render` aplica migraciones antes de iniciar la API, a diferencia del arranque local. Render se configura por separado del entorno local.
 
-`npm test` valida los ejemplos OpenAPI y respuestas HTTP reales mediante JSON Schema 2020, junto con aislamiento, vacios, errores y consistencia de las cinco secciones. CI ejecuta la misma suite sobre PostgreSQL aislado. Ver [cierre backend](docs/be-07-delivery.md).
-
-Para repetir la medicion manual, configurar TEST_DATABASE_URL a la instancia de pruebas dedicada (igual que npm test) y ejecutar `npm run benchmark:dashboard`. Opcional: BENCHMARK_OUTPUT indica el archivo JSON de resultados. El comando crea una base aleatoria propia, carga datos sinteticos, mide 20 peticiones tras calentamiento y elimina solo esa base al terminar. No usar una instancia de desarrollo del usuario. La conexion de carga permite120s para insertar el fixture; la API conserva su timeout normal5s. El benchmark no forma parte de los checks de CI y no establece un SLA productivo. Evidencia exportada en [be-07-benchmark.json](docs/be-07-benchmark.json).
+El código, configuraciones y lockfile se versionan; `node_modules` y `dist` están excluidos de Git.

@@ -123,7 +123,9 @@ test('registration, owned profile updates and password change revoke all session
   assert.equal(user.displayName, 'New user');
   assert.equal(user.openingBalance, '0.00');
   const token = createdSession.accessToken;
-  const secondToken = await accessToken('new.user@fintrack.test');
+  const secondLogin = await login('new.user@fintrack.test', { password: 'long-enough-password' });
+  assert.equal(secondLogin.status, 200);
+  const secondToken = (await secondLogin.json()).accessToken;
   assert.equal((await fetch(`${base}/users/me`)).status, 401);
   const profileResponse = await api('/users/me', token);
   assert.equal(profileResponse.status, 200);
@@ -945,7 +947,7 @@ test('savings migration upgrades BE05 without changing existing users, movements
     const entries = await upgrade.query('SELECT * FROM savings_entries ORDER BY id');
     await seedDevelopment(upgrade, password, 'test');
     assert.deepEqual(await upgrade.query('SELECT * FROM savings_entries ORDER BY id'), entries);
-    assert.deepEqual(await upgrade.query('SELECT * FROM users WHERE id=$1', [original.id]), before.users);
+    assert.deepEqual(await upgrade.query('SELECT id,email,password_hash,opening_balance,opening_at,currency FROM users WHERE id=$1', [original.id]), before.users);
     assert.deepEqual(await upgrade.query('SELECT * FROM budgets WHERE id=$1', [before.budgets[0].id]), before.budgets);
     assert.deepEqual(await upgrade.query('SELECT id,user_id,category_id,type,status,amount,currency,occurred_at,refund_of_id FROM transactions WHERE id=$1', [before.movements[0].id]), before.movements);
     assert.deepEqual(await upgrade.query('SELECT description FROM transactions WHERE id=$1', [before.movements[0].id]), [{ description: null }]);
@@ -1200,6 +1202,8 @@ test('seed denies production and migrations can roll back and reapply on their o
   await assert.rejects(seedDevelopment(source, password, 'production'));
   assert.ok(await source.getRepository(User).count() >= 2);
   await app.close(); app = undefined;
+  await source.undoLastMigration();
+  assert.equal((await source.query("SELECT column_name FROM information_schema.columns WHERE table_name='users' AND column_name='display_name'"))[0], undefined);
   await source.undoLastMigration();
   assert.equal((await source.query("SELECT column_name FROM information_schema.columns WHERE table_name='transactions' AND column_name='description'"))[0], undefined);
   await source.undoLastMigration();

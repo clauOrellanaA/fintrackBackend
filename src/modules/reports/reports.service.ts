@@ -1,9 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PersistenceService } from '../../database/persistence.module';
 import { decimalToMinorUnits, formatMinorUnits } from '../../shared/money';
 import { BalanceService } from '../transactions/balance.service';
 import { ExpenseDistributionService } from '../transactions/expense-distribution.service';
 import { MonthlySummaryService } from '../transactions/monthly-summary.service';
+import { User } from '../users/entities/user.entity';
 import { resolveReportPeriod } from './report-period';
 
 @Injectable()
@@ -19,12 +20,20 @@ export class ReportsService {
     const asOf = new Date();
     const period = resolveReportPeriod(query);
     return this.persistence.source.transaction('REPEATABLE READ', async manager => {
+      const user = await manager.getRepository(User).findOneBy({ id: userId });
+      if (!user) {
+        throw new UnauthorizedException({ error: { code: 'UNAUTHENTICATED', message: 'Sesion requerida o invalida.' } });
+      }
       const comparison = await this.summaries.getForUser(userId, period, manager);
       const income = decimalToMinorUnits(comparison.income);
       const expense = decimalToMinorUnits(comparison.expense);
       const expenseDistribution = await this.distributions.getForUser(userId, period, manager);
       const balanceEvolution: Array<{ month: string; amount: string; cutoff: string }> = [];
       for (const month of period.months) {
+        // A new account has no valid balance before its opening instant. Skip
+        // those historical buckets instead of converting a valid empty report
+        // into DATA_INTEGRITY_ERROR.
+        if (month.endExclusive.getTime() <= user.openingAt.getTime()) continue;
         const cutoff = month.endExclusive.getTime() < asOf.getTime() ? month.endExclusive : asOf;
         const balance = await this.balances.getForUser(userId, cutoff, manager);
         balanceEvolution.push({ month: month.month, amount: balance.amount, cutoff: cutoff.toISOString() });

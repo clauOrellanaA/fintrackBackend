@@ -6,15 +6,15 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 .codex/hooks/proteger_archivos.py",
-            "commandWindows": "py -3 .codex/hooks/proteger_archivos.py",
+            "command": "python3 -c \"import pathlib,runpy,subprocess,sys; root=pathlib.Path(subprocess.check_output(['git','rev-parse','--show-toplevel'],text=True).strip()); hooks=root/'.codex'/'hooks'; sys.path.insert(0,str(hooks)); runpy.run_path(str(hooks/'proteger_archivos.py'),run_name='__main__')\"",
+            "commandWindows": "py -3 -c \"import pathlib,runpy,subprocess,sys; root=pathlib.Path(subprocess.check_output(['git','rev-parse','--show-toplevel'],text=True).strip()); hooks=root/'.codex'/'hooks'; sys.path.insert(0,str(hooks)); runpy.run_path(str(hooks/'proteger_archivos.py'),run_name='__main__')\"",
             "timeout": 10,
             "statusMessage": "Hook FinanTrack: protegiendo secretos y archivos locales..."
           },
           {
             "type": "command",
-            "command": "python3 .codex/hooks/detectar_credenciales.py",
-            "commandWindows": "py -3 .codex/hooks/detectar_credenciales.py",
+            "command": "python3 -c \"import pathlib,runpy,subprocess,sys; root=pathlib.Path(subprocess.check_output(['git','rev-parse','--show-toplevel'],text=True).strip()); hooks=root/'.codex'/'hooks'; sys.path.insert(0,str(hooks)); runpy.run_path(str(hooks/'detectar_credenciales.py'),run_name='__main__')\"",
+            "commandWindows": "py -3 -c \"import pathlib,runpy,subprocess,sys; root=pathlib.Path(subprocess.check_output(['git','rev-parse','--show-toplevel'],text=True).strip()); hooks=root/'.codex'/'hooks'; sys.path.insert(0,str(hooks)); runpy.run_path(str(hooks/'detectar_credenciales.py'),run_name='__main__')\"",
             "timeout": 10,
             "statusMessage": "Hook FinanTrack: buscando credenciales en el parche..."
           }
@@ -25,8 +25,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 .codex/hooks/bloquear_comandos.py",
-            "commandWindows": "py -3 .codex/hooks/bloquear_comandos.py",
+            "command": "python3 -c \"import pathlib,runpy,subprocess,sys; root=pathlib.Path(subprocess.check_output(['git','rev-parse','--show-toplevel'],text=True).strip()); hooks=root/'.codex'/'hooks'; sys.path.insert(0,str(hooks)); runpy.run_path(str(hooks/'bloquear_comandos.py'),run_name='__main__')\"",
+            "commandWindows": "py -3 -c \"import pathlib,runpy,subprocess,sys; root=pathlib.Path(subprocess.check_output(['git','rev-parse','--show-toplevel'],text=True).strip()); hooks=root/'.codex'/'hooks'; sys.path.insert(0,str(hooks)); runpy.run_path(str(hooks/'bloquear_comandos.py'),run_name='__main__')\"",
             "timeout": 240,
             "statusMessage": "Hook FinanTrack: revisando comando y pruebas antes del push..."
           }
@@ -39,8 +39,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 .codex/hooks/ejecutar_tests.py",
-            "commandWindows": "py -3 .codex/hooks/ejecutar_tests.py",
+            "command": "python3 -c \"import pathlib,runpy,subprocess,sys; root=pathlib.Path(subprocess.check_output(['git','rev-parse','--show-toplevel'],text=True).strip()); hooks=root/'.codex'/'hooks'; sys.path.insert(0,str(hooks)); runpy.run_path(str(hooks/'ejecutar_tests.py'),run_name='__main__')\"",
+            "commandWindows": "py -3 -c \"import pathlib,runpy,subprocess,sys; root=pathlib.Path(subprocess.check_output(['git','rev-parse','--show-toplevel'],text=True).strip()); hooks=root/'.codex'/'hooks'; sys.path.insert(0,str(hooks)); runpy.run_path(str(hooks/'ejecutar_tests.py'),run_name='__main__')\"",
             "timeout": 240,
             "statusMessage": "Hook FinanTrack: construyendo backend y probando el modulo afectado..."
           }
@@ -51,8 +51,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 .codex/hooks/auditoria.py",
-            "commandWindows": "py -3 .codex/hooks/auditoria.py",
+            "command": "python3 -c \"import pathlib,runpy,subprocess,sys; root=pathlib.Path(subprocess.check_output(['git','rev-parse','--show-toplevel'],text=True).strip()); hooks=root/'.codex'/'hooks'; sys.path.insert(0,str(hooks)); runpy.run_path(str(hooks/'auditoria.py'),run_name='__main__')\"",
+            "commandWindows": "py -3 -c \"import pathlib,runpy,subprocess,sys; root=pathlib.Path(subprocess.check_output(['git','rev-parse','--show-toplevel'],text=True).strip()); hooks=root/'.codex'/'hooks'; sys.path.insert(0,str(hooks)); runpy.run_path(str(hooks/'auditoria.py'),run_name='__main__')\"",
             "timeout": 10
           }
         ]
@@ -63,8 +63,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 .codex/hooks/auditoria.py",
-            "commandWindows": "py -3 .codex/hooks/auditoria.py",
+            "command": "python3 -c \"import pathlib,runpy,subprocess,sys; root=pathlib.Path(subprocess.check_output(['git','rev-parse','--show-toplevel'],text=True).strip()); hooks=root/'.codex'/'hooks'; sys.path.insert(0,str(hooks)); runpy.run_path(str(hooks/'auditoria.py'),run_name='__main__')\"",
+            "commandWindows": "py -3 -c \"import pathlib,runpy,subprocess,sys; root=pathlib.Path(subprocess.check_output(['git','rev-parse','--show-toplevel'],text=True).strip()); hooks=root/'.codex'/'hooks'; sys.path.insert(0,str(hooks)); runpy.run_path(str(hooks/'auditoria.py'),run_name='__main__')\"",
             "timeout": 10
           }
         ]

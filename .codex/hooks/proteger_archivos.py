@@ -1,39 +1,23 @@
-"""Codex PreToolUse hook: protect tests and local environment files."""
-import json
+"""Codex PreToolUse hook: protect tests and local environment files, including renames."""
 import re
-import sys
 
-sys.stderr.reconfigure(encoding="utf-8")
-event = json.loads(sys.stdin.buffer.read().decode("utf-8"))
-patch = event.get("tool_input", {}).get("command", "")
-if not isinstance(patch, str):
-    patch = ""
+from hook_utils import PolicyError, command_input, normalized_path, patch_paths, read_event, run_hook
 
-paths = re.findall(r"^\*\*\* (?:Add|Update|Delete) File: (.+)$", patch, re.MULTILINE)
-for raw_path in paths:
-    path = raw_path.strip().replace("\\", "/")
-    while path.startswith("./"):
-        path = path[2:]
-    name = path.rsplit("/", 1)[-1]
-    protected_test = (
-        path.startswith("tests/")
-        or "/tests/" in f"/{path}"
-        or "/__tests__/" in f"/{path}"
-        or bool(re.search(r"\.(?:test|spec)\.[^.]+$", name, re.IGNORECASE))
-    )
-    if protected_test:
-        print(
-            f"⛔ BLOQUEADO por hook: '{name}' es una prueba protegida. "
-            "Corrige la implementación, no modifiques las pruebas.",
-            file=sys.stderr,
-        )
-        sys.exit(2)
 
-    if name == ".env" or (name.startswith(".env.") and name != ".env.example"):
-        print(
-            f"⛔ BLOQUEADO por hook: '{name}' puede contener secretos y no se puede modificar.",
-            file=sys.stderr,
-        )
-        sys.exit(2)
+def main() -> int:
+    event = read_event()
+    if event.get("tool_name") != "apply_patch":
+        return 0
+    for raw_path in patch_paths(command_input(event)):
+        path = normalized_path(raw_path)
+        parts = path.split("/")
+        name = parts[-1]
+        if "tests" in parts or "__tests__" in parts or re.search(r"\.(?:test|spec)\.[^.]+$", name):
+            raise PolicyError("el parche afecta una prueba protegida; corrige la implementación")
+        if name == ".env" or (name.startswith(".env.") and name != ".env.example"):
+            raise PolicyError("el parche afecta un archivo de entorno protegido")
+    return 0
 
-sys.exit(0)
+
+if __name__ == "__main__":
+    run_hook(main)

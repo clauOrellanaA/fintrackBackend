@@ -5,17 +5,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-sys.stdout.reconfigure(encoding="utf-8")
-sys.stderr.reconfigure(encoding="utf-8")
-
-
-def fail(message: str, detail: str = "") -> None:
-    print(
-        "❌ El hook ejecutó las pruebas después del cambio y fallaron.\n"
-        f"{message}\n{detail[-3000:]}",
-        file=sys.stderr,
-    )
-    sys.exit(2)
+from hook_utils import PolicyError, command_input, event_directory, normalized_path, patch_paths, project_root, read_event, run_hook
 
 
 def run_npm(project: Path, arguments: list[str], timeout: int) -> subprocess.CompletedProcess[str]:
@@ -28,67 +18,68 @@ def run_npm(project: Path, arguments: list[str], timeout: int) -> subprocess.Com
     )
 
 
-event = json.loads(sys.stdin.buffer.read().decode("utf-8"))
-patch = event.get("tool_input", {}).get("command", "")
-if not isinstance(patch, str):
-    patch = ""
-paths = [
-    line.split(": ", 1)[1].strip().replace("\\", "/")
-    for line in patch.splitlines()
-    if line.startswith(("*** Add File: ", "*** Update File: ", "*** Delete File: "))
-]
-backend_area = (
-    "src/modules/dashboard/",
-    "src/modules/transactions/",
-    "src/modules/budgets/",
-    "src/modules/savings-goals/",
-    "src/modules/auth/",
-    "src/modules/users/",
-    "src/database/",
-    "tests/",
-    "docs/openapi/",
-)
-if not any(path.startswith(backend_area) for path in paths):
-    sys.exit(0)
+def require_success(result, message: str) -> None:
+    if result.returncode:
+        print((result.stdout + result.stderr)[-3000:], file=sys.stderr)
+        raise PolicyError(message)
 
-project = Path(event.get("cwd") or os.getcwd()).resolve()
-if not (project / "package.json").is_file() or not (project / "package-lock.json").is_file():
-    fail("No se encontró package.json/package-lock.json en el repositorio backend.")
 
-try:
-    if os.environ.get("TEST_DATABASE_URL"):
-        result = run_npm(project, ["test"], 210)
-        detail = result.stdout + result.stderr
-        if result.returncode != 0:
-            fail("Falló npm test con TEST_DATABASE_URL configurada.", detail)
-        summary = "✅ Hook de pruebas: build y suite backend con PostgreSQL → OK"
-    else:
-        build = run_npm(project, ["run", "build"], 45)
-        if build.returncode != 0:
-            fail("Falló npm run build.", build.stdout + build.stderr)
-        if os.name == "nt":
-            command = ["cmd.exe", "/d", "/s", "/c", "node --test tests/contract.test.cjs tests/period.test.cjs"]
-        else:
-            command = ["node", "--test", "tests/contract.test.cjs", "tests/period.test.cjs"]
-        tests = subprocess.run(
-            command, cwd=project, capture_output=True, text=True, encoding="utf-8", timeout=30, check=False
-        )
-        if tests.returncode != 0:
-            fail("Fallaron las pruebas unitarias de contrato y periodos.", tests.stdout + tests.stderr)
-        detail = build.stdout + build.stderr + tests.stdout + tests.stderr
-        summary = "✅ Hook de pruebas: build y pruebas contract/period → OK (PostgreSQL no configurado)"
-except subprocess.TimeoutExpired as error:
-    fail("Las comprobaciones excedieron el tiempo límite.", str(error))
-
-print(
-    json.dumps(
-        {
-            "hookSpecificOutput": {
-                "hookEventName": "PostToolUse",
-                "additionalContext": summary,
-            }
-        },
-        ensure_ascii=False,
+def main() -> int:
+    event = read_event()
+    if event.get("tool_name") != "apply_patch":
+        return 0
+    paths = patch_paths(command_input(event))
+    backend_area = (
+        "src/modules/dashboard/", "src/modules/transactions/", "src/modules/budgets/",
+        "src/modules/savings-goals/", "src/modules/auth/", "src/modules/users/",
+        "src/database/", "tests/", "docs/openapi/",
     )
-)
-sys.exit(0)
+    # Resolve root even when Codex is started from a repository subdirectory.
+    if not paths:
+        return 0
+    directory = event_directory(event)
+    project = project_root(directory)
+    normalized_root = Path(normalized_path(str(project)))
+    relative_paths = []
+    for path in paths:
+        candidate = Path(normalized_path(path))
+        # Check both repo-relative and session-relative forms conservatively.
+        candidates = [candidate] if candidate.is_absolute() else [candidate, Path(normalized_path(str(directory / path)))]
+        for candidate in candidates:
+            path = candidate.as_posix()
+            if not candidate.is_absolute():
+                relative_paths.append(path)
+                continue
+            try:
+                path = candidate.relative_to(normalized_root).as_posix()
+            except ValueError:
+                continue
+            relative_paths.append(path)
+    if not any(path.startswith(backend_area) for path in relative_paths):
+        return 0
+    if not (project / "package.json").is_file() or not (project / "package-lock.json").is_file():
+        raise PolicyError("no se encontró package.json/package-lock.json en la raíz backend")
+    try:
+        if os.environ.get("TEST_DATABASE_URL"):
+            result = run_npm(project, ["test"], 210)
+            require_success(result, "falló npm test con TEST_DATABASE_URL configurada")
+            summary = "Hook de pruebas: build y suite backend con PostgreSQL aprobados"
+        else:
+            build = run_npm(project, ["run", "build"], 45)
+            require_success(build, "falló npm run build")
+            arguments = ["node", "--test", "tests/contract.test.cjs", "tests/period.test.cjs"]
+            if os.name == "nt":
+                arguments = ["cmd.exe", "/d", "/s", "/c", "node --test tests/contract.test.cjs tests/period.test.cjs"]
+            result = subprocess.run(
+                arguments, cwd=project, capture_output=True, text=True, encoding="utf-8", timeout=30, check=False
+            )
+            require_success(result, "fallaron las pruebas de contrato y periodos")
+            summary = "Hook de pruebas: build y contract/period aprobados; PostgreSQL no configurado"
+    except (OSError, subprocess.TimeoutExpired) as error:
+        raise PolicyError("no se pudieron completar las comprobaciones backend") from error
+    print(json.dumps({"hookSpecificOutput": {"hookEventName": "PostToolUse", "additionalContext": summary}}, ensure_ascii=False))
+    return 0
+
+
+if __name__ == "__main__":
+    run_hook(main)

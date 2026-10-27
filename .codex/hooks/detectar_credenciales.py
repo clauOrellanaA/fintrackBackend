@@ -3,7 +3,7 @@ import json
 import re
 import sys
 
-sys.stderr.reconfigure(encoding="utf-8")
+from hook_utils import command_input, read_event, run_hook
 
 SECRET_PATTERNS = (
     ("AWS access key ID", re.compile(r"\b(?:AKIA|ASIA)[0-9A-Z]{16}\b")),
@@ -44,20 +44,10 @@ def find_credentials(patch: str) -> list[tuple[str, str]]:
 
 
 def main() -> int:
-    try:
-        event = json.load(sys.stdin)
-    except (json.JSONDecodeError, UnicodeDecodeError):
-        print("Hook de credenciales: entrada JSON inválida; parche bloqueado.", file=sys.stderr)
-        return 2
-
+    event = read_event()
     if event.get("tool_name") != "apply_patch":
         return 0
-
-    tool_input = event.get("tool_input", {})
-    patch = tool_input.get("command", "") if isinstance(tool_input, dict) else ""
-    if not isinstance(patch, str):
-        print("Hook de credenciales: formato de parche inválido; parche bloqueado.", file=sys.stderr)
-        return 2
+    patch = command_input(event)
 
     findings = find_credentials(patch)
     if findings:
@@ -72,4 +62,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    run_hook(main)

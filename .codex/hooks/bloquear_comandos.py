@@ -90,7 +90,11 @@ def run_push_checks(project: Path) -> bool:
     return True
 
 
-event = json.loads(sys.stdin.buffer.read().decode("utf-8"))
+try:
+    event = json.loads(sys.stdin.buffer.read().decode("utf-8"))
+except (UnicodeDecodeError, json.JSONDecodeError) as error:
+    print(f"⛔ Hook: entrada JSON inválida: {error}", file=sys.stderr)
+    sys.exit(2)
 tool = str(event.get("tool_name", "")).lower()
 if not any(name in tool for name in ("bash", "powershell", "shell", "terminal")):
     sys.exit(0)
@@ -100,12 +104,23 @@ if not isinstance(command, str):
     command = ""
 for pattern, reason in DANGEROUS.items():
     if re.search(pattern, command, re.IGNORECASE):
-        print(
-            f"⛔ BLOQUEADO por hook: {reason}. "
-            "Solicita confirmación y utiliza un procedimiento seguro.",
-            file=sys.stderr,
+        message = (
+            f"BLOQUEADO por hook: {reason}. "
+            "Solicita confirmación y utiliza un procedimiento seguro."
         )
-        sys.exit(2)
+        print(
+            json.dumps(
+                {
+                    "hookSpecificOutput": {
+                        "hookEventName": "PreToolUse",
+                        "permissionDecision": "deny",
+                        "permissionDecisionReason": message,
+                    }
+                },
+                ensure_ascii=False,
+            )
+        )
+        sys.exit(0)
 
 if re.search(r"\bgit\s+push\b", command, re.IGNORECASE):
     project = Path(event.get("cwd") or os.getcwd()).resolve()

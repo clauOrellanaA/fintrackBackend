@@ -1,6 +1,6 @@
 # Documentación del backend
 
-Este índice organiza la documentación sin mover documentos existentes ni cambiar contratos. Alcance: únicamente fintrackBackend. Línea base inspeccionada: bf57ebcd582706ab467251baf2d875fddcbb5fa2, 2026-10-28.
+Este índice organiza la documentación sin mover documentos existentes ni cambiar contratos. Alcance: únicamente fintrackBackend. Línea base vigente inspeccionada: 59acca46ad7a0c43d5ac00bc5c548b6acc227109, 2026-10-28. La primera captura SDD fue bf57ebc; su cierre documental se conserva como histórico.
 
 ## Empezar aquí
 
@@ -8,7 +8,7 @@ Este índice organiza la documentación sin mover documentos existentes ni cambi
 2. [Flujo SDD simple y prompts](sdd/README.md).
 3. [Plan técnico de la línea base](sdd/plan.md), [tareas documentales](sdd/tasks.md) y [matriz RF–test](sdd/coverage.md).
 
-## Especificaciones retrospectivas
+## Especificaciones y pendientes
 
 | ID | Capacidad existente | Especificación |
 | --- | --- | --- |
@@ -17,14 +17,15 @@ Este índice organiza la documentación sin mover documentos existentes ni cambi
 | 003 | Movimientos y categorías propios | [Transacciones y categorías](specs/003-transactions-categories/spec.md) |
 | 004 | Cinco secciones de indicadores financieros | [Dashboard](specs/004-dashboard/spec.md) |
 | 005 | Gestión y consumo de presupuestos | [Presupuestos](specs/005-budgets/spec.md) |
-| 006 | Metas y reservas persistidas, expuestas por el dashboard | [Ahorros internos](specs/006-savings/spec.md) |
-| 007 | Comparación, distribución y evolución del saldo | [Reportes](specs/007-reports/spec.md) |
+| 006 | Gestión de metas, aportes/retiros, indicadores y reservas | [Spec](specs/006-savings/spec.md), [plan](specs/006-savings/plan.md) y [tareas](specs/006-savings/tasks.md) |
+| 007 | Comparación, distribución y evolución del saldo | [Spec](specs/007-reports/spec.md), [plan](specs/007-reports/plan.md) y [tareas](specs/007-reports/tasks.md) |
+| 008 | Avisos internos de condiciones actuales; PROPUESTO, no implementado | [Spec](specs/008-in-app-notifications/spec.md), [plan](specs/008-in-app-notifications/plan.md) y [tareas](specs/008-in-app-notifications/tasks.md) |
 
-Estos documentos describen el comportamiento observado. La [cobertura](sdd/coverage.md) distingue pruebas identificadas de ejecuciones; no certifica cumplimiento funcional. Salud, configuración y aprovisionamiento se describen como capacidades transversales en el plan.
+001–007 describen comportamiento observado; 008 propone el trabajo que falta. Los pendientes de 006, 007 y 008 se guardan en sus propios spec.md, plan.md y tasks.md. La [cobertura](sdd/coverage.md) distingue pruebas identificadas de ejecuciones; no certifica cumplimiento funcional. Salud, configuración y aprovisionamiento se describen como capacidades transversales en el plan.
 
 ## Contratos y operación existentes
 
-- OpenAPI: [dashboard](openapi/dashboard.v1.json), [usuarios y seguridad](openapi/users.v1.json), [transacciones y categorías](openapi/transactions.v1.json), [presupuestos](openapi/budgets.v1.json) y [reportes](openapi/reports.v1.json).
+- OpenAPI: [dashboard](openapi/dashboard.v1.json), [usuarios y seguridad](openapi/users.v1.json), [transacciones y categorías](openapi/transactions.v1.json), [presupuestos](openapi/budgets.v1.json), [reportes](openapi/reports.v1.json) y [metas](openapi/savings-goals.v1.json).
 - [Contrato financiero del dashboard](dashboard-contract.md).
 - [Arquitectura](architecture.md) e [integración](integration.md): conservan pasajes históricos; consultar las discrepancias registradas en el [flujo SDD](sdd/README.md).
 - [Guía del proyecto](../README.md), [contribución y CI](../CONTRIBUTING.md), [despliegue](render-deployment.md) y [hooks de Codex](codex-hooks.md).

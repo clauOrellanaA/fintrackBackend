@@ -1,8 +1,8 @@
 # Matriz de trazabilidad RF–implementación–test
 
-Base inspeccionada: bf57ebcd582706ab467251baf2d875fddcbb5fa2. Fecha: 2026-10-28. [Specs](../README.md) · [Plan](plan.md) · [Tareas](tasks.md).
+Base vigente inspeccionada: 59acca46ad7a0c43d5ac00bc5c548b6acc227109. Captura original: bf57ebc. Fecha: 2026-10-28. [Specs](../README.md) · [Plan](plan.md) · [Tareas](tasks.md).
 
-**Estado de todas las filas: identificado por inspección, NO EJECUTADO en esta entrega.** No se informa ningún test aprobado ni cumplimiento funcional. «Escenario identificado» significa que se localizó una prueba relevante, no que cada cláusula del RF esté cubierta exhaustivamente. «Parcial» señala límites concretos detectados; no equivale a fallo demostrado. La matriz contiene 36 RF de siete specs.
+**Estado: inspección del código, SIN EJECUCIÓN de tests en esta entrega. Las filas 008 son PROPUESTAS sin implementación ni test.** No se informa ningún test aprobado ni cumplimiento funcional. «Escenario identificado» significa que se localizó una prueba relevante, no que cada cláusula del RF esté cubierta exhaustivamente. «Parcial» señala límites concretos detectados; no equivale a fallo demostrado. La matriz contiene 46 RF de ocho specs: 40 describen implementación existente y 6 corresponden al plan 008. Tener fuente identificada no acredita test ni resultado.
 
 ## Pruebas identificadas
 
@@ -53,7 +53,7 @@ Las pruebas de ejemplo C01–C03 complementan contrato; no reemplazan ejecución
 
 ## Matriz
 
-Los enlaces de cada bloque son las fuentes de implementación. Los nombres exactos de los tests están en la tabla anterior. Todos comparten el estado NO EJECUTADO declarado al inicio.
+Los enlaces de cada bloque son las fuentes de implementación. Los nombres exactos de los tests están en la tabla anterior. Los RF existentes comparten estado NO EJECUTADO; los propuestos se señalan explícitamente como SIN CÓDIGO/SIN TEST.
 
 ### 001 — [Autenticación](../specs/001-auth-sessions/spec.md)
 
@@ -116,9 +116,9 @@ Fuentes: [controlador](../../src/modules/budgets/budgets.controller.ts), [servic
 | 005/RF-4 | readForUser y ExpenseDistributionService | P18, P20, P21 | Brutos, futuros, void, refunds, sin arrastre y snapshot |
 | 005/RF-5 | comparación exacta de spent/limit | P18, P20 | Umbrales exactos, progreso redondeado, excedido, vacíos y sin gastos |
 
-### 006 — [Ahorros internos](../specs/006-savings/spec.md)
+### 006 — [Gestión y reservas de ahorro](../specs/006-savings/spec.md)
 
-Fuentes: [metas](../../src/modules/savings-goals/savings-goals.service.ts), [reservas](../../src/modules/savings-goals/persisted-savings-reservation.reader.ts), [integridad](../../src/database/migrations/1792540800000-SavingsGoals.ts).
+Fuentes: [controlador de gestión](../../src/modules/savings-goals/savings-goals.controller.ts), [metas](../../src/modules/savings-goals/savings-goals.service.ts), [reservas](../../src/modules/savings-goals/persisted-savings-reservation.reader.ts), [integridad](../../src/database/migrations/1792540800000-SavingsGoals.ts).
 
 | RF | Fuente concreta | Test identificado | Alcance estático |
 | --- | --- | --- | --- |
@@ -127,6 +127,10 @@ Fuentes: [metas](../../src/modules/savings-goals/savings-goals.service.ts), [res
 | 006/RF-3 | clasificación completed/overdue/active | P23 | Día local, hoy, ausencia de fecha y precedencia de completado |
 | 006/RF-4 | PersistedSavingsReservationReader | P22, P24, P28 | Reserva única, archivo, retiro, futuro, aislamiento y snapshot |
 | 006/RF-5 | restricciones y ledger_version | P25, P26 | Append-only, prefijos temporales, propietario/fechas e impedimento de sobregiro concurrente; no extiende garantías a carreras de cambio de apertura no probadas |
+| 006/RF-6 | createForUser y normalizeCreate | SIN TEST dedicado identificado | Código integrado; falta test HTTP de creación, límites, fecha opcional, cuerpo estricto y contrato de metas |
+| 006/RF-7 | listForUser/readManageableForUser | SIN TEST dedicado identificado | Código integrado; falta HTTP de listado con archivadas, vacío, orden y aislamiento |
+| 006/RF-8 | updateForUser y normalizeUpdate | SIN TEST dedicado identificado | Código integrado; falta HTTP de edición parcial, archivo/desarchivo, ajeno y restricciones reconocidas |
+| 006/RF-9 | addEntryForUser/normalizeEntry y ledger | SIN TEST HTTP dedicado; P25/P26 solo integridad interna | Falta ruta de aportes/retiros con fecha/default, campo extra, archivada, aislamiento y error; los tests SQL no acreditan status HTTP |
 
 ### 007 — [Reportes](../specs/007-reports/spec.md)
 
@@ -137,11 +141,24 @@ Fuentes: [periodo](../../src/modules/reports/report-period.ts), [servicio](../..
 | 007/RF-1 | resolveReportPeriod | R02, R03 | Formatos, 24/25 meses calendario, duplicados y límites diarios |
 | 007/RF-2 | summaries + comparison | R03, R04 | Totales exactos, devoluciones, anulados, otro titular y vacío |
 | 007/RF-3 | distributions | R03, R04 | Parcial: agrupación y vacío; bordes de redondeo/orden cubiertos en servicio reutilizado por P13–P15, no repetidos todos por HTTP de reportes |
-| 007/RF-4 | bucle balanceEvolution y cutoff | R03, R04 | Acumulado por mes, vacío y futuro; corte mensual exactamente coincidente con un movimiento sin test de reporte dedicado identificado |
+| 007/RF-4 | bucle balanceEvolution y cutoff | R03, R04 | Acumulado, vacío y futuro cubiertos por escenarios identificados; SIN TEST dedicado de omisión preapertura de cuenta nueva ni de movimiento exactamente al corte mensual |
 | 007/RF-5 | SessionGuard y REPEATABLE READ | R01, R03, R04, C02 | Parcial: autenticación, privacidad, aislamiento y contrato; sin test dedicado identificado de escritura concurrente o fallo de cálculo durante el reporte |
+
+### 008 — [Avisos internos propuestos](../specs/008-in-app-notifications/spec.md)
+
+No hay módulo/controlador de avisos implementado ni tests existentes para estos RF. Los servicios de presupuestos/metas son fuentes reutilizables, no evidencia de una API de avisos. Tests futuros se detallan en [N1–N12](../specs/008-in-app-notifications/tasks.md), sin nombres ficticios de tests ya existentes.
+
+| RF | Fuente concreta | Test identificado | Alcance estático |
+| --- | --- | --- | --- |
+| 008/RF-1 | PROPUESTO: consulta privada y periodo | SIN TEST | SIN CÓDIGO de avisos; reutilizar guard/resolvePeriod no valida la futura ruta |
+| 008/RF-2 | PROPUESTO: proyectar estado de BudgetsService | SIN TEST de avisos; P18 prueba estado financiero | Umbrales existentes; contenido de notificación pendiente |
+| 008/RF-3 | PROPUESTO: proyectar estado de SavingsGoalsService | SIN TEST de avisos; P23 prueba estado financiero | Política de avisos completed/overdue propuesta, no implementada |
+| 008/RF-4 | PROPUESTO: identidad, mensaje, orden y total | SIN TEST | SIN CÓDIGO; contador total, no no-leídos |
+| 008/RF-5 | PROPUESTO: snapshot y fallo global | SIN TEST | SIN CÓDIGO; pruebas concurrentes de dashboard no acreditan futura consulta de avisos |
+| 008/RF-6 | PROPUESTO: condiciones actuales sin escrituras | SIN TEST | SIN CÓDIGO; no historial, estado leído ni entrega automática |
 
 ## Transversales y veredicto
 
 Aprovisionamiento tiene tests en [create-user.test.cjs](../../tests/create-user.test.cjs) y pruebas production provisioning/seed en la suite P. Migraciones/upgrade/rollback están identificadas en la suite P; no están ejecutadas aquí. Health y validación de configuración no tienen test dedicado identificado en este inventario.
 
-**Veredicto funcional: NO VERIFICADO.** Hay fuentes y pruebas relevantes para los 36 RF, con coberturas parciales explícitas; falta ejecutar la suite y resolver o aceptar las lagunas antes de declarar las specs cumplidas. El resultado de una futura ejecución deberá registrar SHA, comando, número de tests aprobados/fallidos y requisitos afectados, sin reemplazar ausencia de prueba por inspección.
+**Veredicto funcional: NO VERIFICADO.** Hay 40 RF de comportamiento existente con cobertura desigual, incluidos cuatro RF nuevos de gestión de metas sin test HTTP dedicado identificado, y seis RF propuestos sin código ni tests. Falta ejecutar las comprobaciones, cubrir lagunas y desarrollar 008 antes de declarar cumplimiento; el consumo de interfaz se verifica en su propia sesión. El resultado de una futura ejecución deberá registrar SHA, comando, número de tests aprobados/fallidos y requisitos afectados, sin reemplazar ausencia de prueba por inspección.

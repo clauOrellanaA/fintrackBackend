@@ -1,6 +1,8 @@
-# Tareas documentales de adopción SDD
+# Tareas documentales SDD
 
-Base: bf57ebcd582706ab467251baf2d875fddcbb5fa2; 2026-10-28. Solo documentación. Duraciones estimadas por tarea: 20–30 minutos. Los checks representan redacción e inspección documental, nunca pruebas funcionales aprobadas. [Plan](plan.md) · [Cobertura](coverage.md).
+## Histórico SDD-01 — no acredita el estado actual
+
+Base histórica: bf57ebcd582706ab467251baf2d875fddcbb5fa2; 2026-10-28. Solo documentación. Duraciones estimadas por tarea: 20–30 minutos. Los checks representan redacción e inspección documental, nunca pruebas funcionales aprobadas. [Plan](plan.md) · [Cobertura](coverage.md).
 
 - [x] **T1 — Inventariar capacidades integradas** (20 min; sin dependencia; RF: 001–007/todos).
   Hecho cuando: existe una lista de las siete capacidades, rutas públicas e internas diferenciadas y SHA base, con discrepancias históricas registradas en el índice/flujo.
@@ -44,3 +46,8 @@ La comprobación principal de solo lectura mediante PowerShell here-string canal
 Git diff --check terminó con código 0; como no incluye archivos nuevos sin seguimiento, estos se comprobaron además con el escaneo explícito anterior. Git status mostró únicamente los 13 documentos nuevos, sin archivos rastreados modificados. Rama planing; worktree C:/fintrack/worktrees/backend/planing-sdd; base bf57ebcd582706ab467251baf2d875fddcbb5fa2.
 
 No se ejecutaron suites funcionales, migraciones, seeds ni benchmark. A1 continúa pendiente y el cumplimiento funcional de las specs sigue **NO VERIFICADO**.
+## Planificación pendiente por spec
+
+- [006 — Tareas de validación de metas de ahorro](../specs/006-savings/tasks.md).
+- [007 — Tareas de validación de reportes](../specs/007-reports/tasks.md).
+- [008 — Tareas de implementación de avisos internos](../specs/008-in-app-notifications/tasks.md).

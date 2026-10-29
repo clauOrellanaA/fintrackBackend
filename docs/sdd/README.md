@@ -1,6 +1,6 @@
 # SDD simple sobre software existente
 
-Línea base: bf57ebcd582706ab467251baf2d875fddcbb5fa2, inspeccionada el 2026-10-28. Alcance: backend. [Índice](../README.md) · [Constitución](../constitution.md) · [Plan](plan.md) · [Tareas](tasks.md) · [Cobertura](coverage.md).
+Línea base vigente: 59acca46ad7a0c43d5ac00bc5c548b6acc227109, inspeccionada el 2026-10-28. Primera captura histórica: bf57ebc. Alcance: backend. [Índice](../README.md) · [Constitución](../constitution.md) · [Plan](plan.md) · [Tareas](tasks.md) · [Cobertura](coverage.md).
 
 ## Regla práctica
 
@@ -20,7 +20,7 @@ Usar la implementación conectada a la aplicación para describir comportamiento
 | 6. Ejecutar si se pide | Una tarea autorizada | Cambio acotado, pruebas pertinentes y detención |
 | 7. Auditar | RF y pruebas ejecutadas | Cobertura, fallos, pendientes y veredicto explícito |
 
-Esta entrega comprende documentación de los pasos 1–5 y trazabilidad estática. No ejecuta el paso 6 ni acredita el cumplimiento funcional del paso 7. Los planes describen la implementación actual; no son una orden de volver a implementarla.
+SDD-01 documentó los pasos 1–5 y su cierre quedó histórico. SDD-02 actualiza lo observado y guarda los pendientes dentro de cada carpeta de spec mediante spec.md, plan.md y tasks.md, sin implementar. No ejecuta el paso 6 ni acredita el cumplimiento funcional del paso 7. El plan compartido describe la implementación actual; el plan 008 es una propuesta explícita. Ninguno ordena reimplementar capacidades existentes ni ejecutar tareas sin autorización.
 
 ## Plantilla de spec
 
@@ -51,9 +51,9 @@ EARS: «CUANDO ocurre X, el sistema DEBE Y»; «SI ocurre un error X, el sistema
 | README del repositorio niega registro público | AuthController expone registro público y la suite HTTP lo ejercita; ver 001 |
 | architecture.md e integration.md describen BE-05 sin CRUD de presupuestos | BudgetsController y la prueba budget management ya incluyen CRUD; ver 005 |
 | integration.md deja CRUD y paginación de listas como futuros | TransactionsController/Service ya exponen operaciones y paginación; ver 003 |
-| architecture.md menciona notifications como dominio | No se identifica servicio/controlador de notificaciones implementado; queda fuera de esta línea base |
+| architecture.md menciona notifications como dominio | No se identifica módulo/controlador de notificaciones implementado; se planifica en 008, todavía sin código |
 
-Se conservan esos documentos para preservar la historia. Para contratos vigentes consultar las specs, OpenAPI y la fuente de la línea base; no interpretar estas diferencias como solicitudes de cambio funcional.
+La API de metas y la omisión de meses preapertura en reportes, integradas después de la primera captura, están incorporadas en 006/007 y en la matriz. Se conservan los documentos históricos fuera de esta actualización para preservar su evidencia, no como inventario vigente. Para contratos vigentes consultar las specs, OpenAPI y la fuente de la línea base; no interpretar estas diferencias como solicitudes de cambio funcional.
 
 ## Actualización posterior
 

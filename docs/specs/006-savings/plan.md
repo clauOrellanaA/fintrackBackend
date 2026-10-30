@@ -1,6 +1,6 @@
 # Plan — 006 Metas de ahorro
 
-**Implementación existente; validación pendiente.** Base 59acca46ad7a0c43d5ac00bc5c548b6acc227109. [Spec](spec.md) · [Tareas](tasks.md). Este plan conserva las reglas actuales: no ordena reimplementar la gestión ni añadir endpoints.
+**Implementación y validación local completadas.** Código 4bea0d915c4197346cdba7b040016b23edb00752; 2026-10-30. [Spec](spec.md) · [Tareas](tasks.md). Este plan conserva las reglas actuales: no ordena reimplementar la gestión ni añadir endpoints.
 
 ## Módulos y modelo actual
 
@@ -29,8 +29,10 @@ Validar cuerpo estricto → obtener propietario de sesión → crear/editar meta
 
 Reutilizar esquema, ledger y servicios actuales preserva sus garantías; duplicar cálculos o reconstruir la API no cubre una brecha de tests. No se propone cambiar reglas de fechas, archivo o dinero.
 
-## Estrategia de validación pendiente
+## Validación ejecutada
 
-Los tests existentes prueban indicadores/ledger, pero no se identifican tests dedicados de estas cuatro operaciones HTTP y el helper no carga el OpenAPI de metas. Añadir cobertura de contrato, creación/listado, edición/archivo y entradas con dos titulares; auditar después RF-1 a RF-9. Ver [matriz](../../sdd/coverage.md).
+Validación local independiente BE-SPECS, 2026-10-30: código/tests/OpenAPI 4bea0d915c4197346cdba7b040016b23edb00752; 82 pruebas aprobadas, 0 fallidas, 0 omitidas. Lint, tipos y build aprobados. [Entrega](../../be-specs-delivery.md) · [Matriz de 46 RF](../../sdd/coverage.md). CI remota, merge y despliegue no acreditados.
 
-Prerrequisito para ejecutar: dependencias con lockfile, compilación y PostgreSQL aislado con TEST_DATABASE_URL en fintrack_be01_test y rol CREATEDB. Usar node:test e infraestructura existentes; registrar comandos/resultados. No ejecutar migraciones ni suites como parte de redactar este plan.
+El helper carga savings-goals.v1.json y permite elegir ese documento frente al esquema homónimo del dashboard. Se ejecutaron seis escenarios de gestión HTTP: autenticación; creación/defaults/límites/formato/cuerpo; listado vacío/archivado/propietario/orden; edición parcial y archivo/desarchivo; aportes/retiros con reserva e insuficiencia; instante expreso futuro e input inválido. Los escenarios internos de ledger, reservas y retiros concurrentes también formaron parte de npm test.
+
+Prerrequisito reproducible: dependencias del lockfile, build y PostgreSQL 17 dedicado. TEST_DATABASE_URL debe apuntar a fintrack_be01_test con rol CREATEDB. Las suites nuevas conservan sus bases en la instancia descartable hasta retirarla; no usan la base del usuario.

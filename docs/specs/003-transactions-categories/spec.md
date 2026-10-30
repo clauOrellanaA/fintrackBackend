@@ -35,6 +35,12 @@ Todos los RF trazados y pruebas de contratos, aislamiento, filtros y anulaciones
 
 ## Dudas y evidencia
 
-[NO VERIFICADO] La cobertura identificada es de escenario integrado; no demuestra cada combinación posible de filtros y límites.
+Se ejecutaron pruebas de empates/paginación, filtros repetidos, búsqueda literal, edición parcial, anulación idempotente y límites. Las regresiones HTTP verifican type vacío y categoryId vacío como 400 antes de persistir. No se afirma cobertura de cada combinación posible.
 
 Fuentes: [controlador de movimientos](../../../src/modules/transactions/transactions.controller.ts), [categorías](../../../src/modules/transactions/categories.controller.ts), [servicios](../../../src/modules/transactions/transactions.service.ts), [contrato](../../openapi/transactions.v1.json) y [cobertura](../../sdd/coverage.md).
+
+## Validación BE-SPECS
+
+Validación local independiente BE-SPECS, 2026-10-30: código/tests/OpenAPI 4bea0d915c4197346cdba7b040016b23edb00752; 82 pruebas aprobadas, 0 fallidas, 0 omitidas. Lint, tipos y build aprobados. [Entrega](../../be-specs-delivery.md) · [Matriz de 46 RF](../../sdd/coverage.md). No se acredita CI remota, merge ni despliegue.
+
+Los resultados acreditan los escenarios trazados, sin prometer cobertura exhaustiva de todas las combinaciones ni garantías adicionales fuera de los RF.

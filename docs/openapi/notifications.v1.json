@@ -1,0 +1,424 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "FinanTrack notifications",
+    "version": "1.0.0",
+    "description": "Current financial conditions projected for the authenticated user. This is a read-only view, not a persistent inbox or an unread count. Money and percentages in Spanish messages use the exact BOB strings supplied by domain services."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000/api/v1"
+    }
+  ],
+  "security": [
+    {
+      "bearerSession": []
+    }
+  ],
+  "paths": {
+    "/notifications": {
+      "get": {
+        "operationId": "getNotifications",
+        "description": "Returns current warning/exceeded budgets from the selected full local month and visible completed/overdue savings goals at asOf. Uses exact pre-rounding states; 100 percent is warning, not exceeded. Omitted month uses the same asOf in America/La_Paz. Invalid sessions are rejected before query validation. Repeated/unknown query parameters are rejected. All sources share one REPEATABLE READ snapshot; a source failure aborts the whole response. GET does not write data or mark items as read.",
+        "parameters": [
+          {
+            "name": "month",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/NotificationMonth"
+            },
+            "example": "2026-10",
+            "description": "Local calendar month, 1900-01 through 9998-12. Omit to use the current local month. Each parameter may appear only once."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Complete current conditions, deterministically ordered by type then subjectId. A successful query with no qualifying conditions returns items [] and total 0. total is the number of items, never unread items.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Notifications"
+                },
+                "examples": {
+                  "current": {
+                    "summary": "All four notification types; identifiers and exact figures are illustrative.",
+                    "value": {
+                      "asOf": "2026-10-30T16:00:00.000Z",
+                      "period": {
+                        "month": "2026-10",
+                        "timeZone": "America/La_Paz",
+                        "start": "2026-10-01T04:00:00.000Z",
+                        "endExclusive": "2026-11-01T04:00:00.000Z"
+                      },
+                      "currency": "BOB",
+                      "items": [
+                        {
+                          "id": "budget_exceeded:22222222-2222-4222-8222-222222222222",
+                          "type": "budget_exceeded",
+                          "subjectType": "budget",
+                          "subjectId": "22222222-2222-4222-8222-222222222222",
+                          "message": "El presupuesto de Transporte superó el límite: 120.00 % (120.00 de 100.00 BOB)."
+                        },
+                        {
+                          "id": "budget_warning:11111111-1111-4111-8111-111111111111",
+                          "type": "budget_warning",
+                          "subjectType": "budget",
+                          "subjectId": "11111111-1111-4111-8111-111111111111",
+                          "message": "El presupuesto de Alimentación está en advertencia: 80.00 % (80.00 de 100.00 BOB)."
+                        },
+                        {
+                          "id": "goal_completed:33333333-3333-4333-8333-333333333333",
+                          "type": "goal_completed",
+                          "subjectType": "savingsGoal",
+                          "subjectId": "33333333-3333-4333-8333-333333333333",
+                          "message": "La meta Estudios está completada: 3000.00 de 3000.00 BOB (100.00 %)."
+                        },
+                        {
+                          "id": "goal_overdue:44444444-4444-4444-8444-444444444444",
+                          "type": "goal_overdue",
+                          "subjectType": "savingsGoal",
+                          "subjectId": "44444444-4444-4444-8444-444444444444",
+                          "message": "La meta Viaje está vencida: 250.00 de 1000.00 BOB (25.00 %)."
+                        }
+                      ],
+                      "total": 4
+                    }
+                  },
+                  "empty": {
+                    "summary": "A successful empty projection.",
+                    "value": {
+                      "asOf": "2026-10-30T16:00:00.000Z",
+                      "period": {
+                        "month": "2026-10",
+                        "timeZone": "America/La_Paz",
+                        "start": "2026-10-01T04:00:00.000Z",
+                        "endExclusive": "2026-11-01T04:00:00.000Z"
+                      },
+                      "currency": "BOB",
+                      "items": [],
+                      "total": 0
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "INVALID_PERIOD: malformed, repeated, unknown, extra identity, or out-of-range query parameter.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationError"
+                },
+                "example": {
+                  "error": {
+                    "code": "INVALID_PERIOD",
+                    "message": "month debe tener formato YYYY-MM y un mes valido."
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHENTICATED: missing, malformed, expired, or revoked bearer session.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationError"
+                },
+                "example": {
+                  "error": {
+                    "code": "UNAUTHENTICATED",
+                    "message": "Sesion requerida o invalida."
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "DATA_OUT_OF_RANGE: a source monetary aggregate exceeds the exact financial contract.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationError"
+                },
+                "example": {
+                  "error": {
+                    "code": "DATA_OUT_OF_RANGE",
+                    "message": "El importe supera el limite permitido."
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "DATA_INTEGRITY_ERROR or INTERNAL_ERROR: invalid source data or an unclassified failure. No partial or synthetic empty response is returned.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationError"
+                },
+                "example": {
+                  "error": {
+                    "code": "DATA_INTEGRITY_ERROR",
+                    "message": "Los datos financieros no son validos."
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "DATA_UNAVAILABLE: a recognized storage failure. No partial list or fabricated zero total is returned.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationError"
+                },
+                "example": {
+                  "error": {
+                    "code": "DATA_UNAVAILABLE",
+                    "message": "No se pudo consultar el servicio."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerSession": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Opaque bearer session token."
+      }
+    },
+    "schemas": {
+      "NotificationMonth": {
+        "type": "string",
+        "pattern": "^(?:19[0-9]{2}|[2-8][0-9]{3}|9[0-8][0-9]{2}|99[0-8][0-9]|999[0-8])-(?:0[1-9]|1[0-2])$"
+      },
+      "NotificationPeriod": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "month",
+          "timeZone",
+          "start",
+          "endExclusive"
+        ],
+        "properties": {
+          "month": {
+            "$ref": "#/components/schemas/NotificationMonth"
+          },
+          "timeZone": {
+            "const": "America/La_Paz"
+          },
+          "start": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "endExclusive": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Notification": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "type",
+          "subjectType",
+          "subjectId",
+          "message"
+        ],
+        "description": "One current condition per type/resource. id is type + colon + subjectId. Spanish messages include exact formatted source progress and spent/limit or saved/target. Stable identity does not imply a persisted event.",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^(budget_warning|budget_exceeded|goal_completed|goal_overdue):[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "budget_warning",
+              "budget_exceeded",
+              "goal_completed",
+              "goal_overdue"
+            ]
+          },
+          "subjectType": {
+            "type": "string",
+            "enum": [
+              "budget",
+              "savingsGoal"
+            ]
+          },
+          "subjectId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "enum": [
+                    "budget_warning",
+                    "budget_exceeded"
+                  ]
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "subjectType": {
+                  "const": "budget"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "enum": [
+                    "goal_completed",
+                    "goal_overdue"
+                  ]
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "subjectType": {
+                  "const": "savingsGoal"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "Notifications": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "asOf",
+          "period",
+          "currency",
+          "items",
+          "total"
+        ],
+        "properties": {
+          "asOf": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Single observation instant shared with default-month resolution and savings sources. Not an event timestamp."
+          },
+          "period": {
+            "$ref": "#/components/schemas/NotificationPeriod"
+          },
+          "currency": {
+            "const": "BOB"
+          },
+          "items": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "$ref": "#/components/schemas/Notification"
+            },
+            "description": "Unique by type and subjectId; ascending type then subjectId. Active, archived, and future-created goals are absent."
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Exactly items.length. This is not an unread count."
+          }
+        }
+      },
+      "NotificationError": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

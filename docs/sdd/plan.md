@@ -1,6 +1,6 @@
-# Plan técnico actual y planificación pendiente
+# Plan técnico actual
 
-Fecha: 2026-10-28. Base vigente: 59acca46ad7a0c43d5ac00bc5c548b6acc227109; captura original bf57ebc. Rama documental: planing. Alcance: describir código existente y enlazar trabajo futuro explícito; no se ejecutan cambios de código ni datos. [Specs](../README.md) · [Constitución](../constitution.md) · [Cobertura](coverage.md).
+Fecha: 2026-10-30. Código validado: 4bea0d915c4197346cdba7b040016b23edb00752; base 34d6b32; captura histórica bf57ebc. Rama feature/be-specs-completion. Alcance: backend implementado y validado localmente. [Specs](../README.md) · [Constitución](../constitution.md) · [Cobertura](coverage.md).
 
 ## Módulos y responsabilidades
 
@@ -14,9 +14,10 @@ Fecha: 2026-10-28. Base vigente: 59acca46ad7a0c43d5ac00bc5c548b6acc227109; captu
 | [budgets](../../src/modules/budgets/budgets.service.ts) | Gestión y consumo mensual; 005/RF-1 a RF-5 |
 | [savings-goals](../../src/modules/savings-goals/savings-goals.service.ts) y [reservas](../../src/modules/savings-goals/persisted-savings-reservation.reader.ts) | Gestión HTTP, indicadores y reservas; 006/RF-1 a RF-9 |
 | [reports](../../src/modules/reports/reports.service.ts) | Orquesta periodo y reutiliza indicadores; 007/RF-1 a RF-5 |
+| [notifications](../../src/modules/notifications/notifications.service.ts) | Avisos bajo snapshot común y sin escrituras; 008/RF-1 a RF-6 |
 | [shared](../../src/shared/money.ts), [porcentajes](../../src/shared/percentage.ts), [zona](../../src/shared/product-time.ts) | Conversión exacta, redondeo y fecha del producto; 002/RF-3 a RF-4, 004/RF-1 a RF-6, 005/RF-1 a RF-5, 006/RF-1 a RF-5, 007/RF-1 a RF-5 |
 
-Los controladores reciben HTTP y validan o delegan; servicios aplican reglas; entidades/migraciones garantizan integridad. Dashboard/reportes componen servicios de dominio y comparten EntityManager; no duplican el cálculo de cada indicador.
+Los controladores reciben HTTP y validan o delegan; servicios aplican reglas; entidades/migraciones garantizan integridad. Dashboard/reportes/avisos componen servicios de dominio y comparten EntityManager; no duplican el cálculo de cada indicador.
 
 ## Modelo de datos existente
 
@@ -65,10 +66,11 @@ Prefijo por defecto /api/v1, configurable mediante API_PREFIX. Las rutas privada
 | PATCH/DELETE /budgets/{id} → 200/204 | Solo limit al actualizar; sin contenido al eliminar | 005/RF-3 |
 | GET/POST /savings-goals → 200/201; PATCH /savings-goals/{id} → 200; POST /savings-goals/{id}/entries → 201 | Gestión autenticada: name/target/targetDate, edición/archived, type/amount/occurredAt; lista incluye archivadas; no DELETE | 006/RF-1 a RF-9 |
 | GET /reports → 200 | from/to YYYY-MM-DD → period, currency, asOf, comparison, expenseDistribution, balanceEvolution | 007/RF-1 a RF-5 |
+| GET /notifications → 200 | month? → asOf, period, currency, items, total | 008/RF-1 a RF-6 |
 
-Contratos existentes: [usuarios/auth](../openapi/users.v1.json), [transacciones/categorías](../openapi/transactions.v1.json), [dashboard](../openapi/dashboard.v1.json), [presupuestos](../openapi/budgets.v1.json), [reportes](../openapi/reports.v1.json) y [metas](../openapi/savings-goals.v1.json).
+Contratos existentes: [usuarios/auth](../openapi/users.v1.json), [transacciones/categorías](../openapi/transactions.v1.json), [dashboard](../openapi/dashboard.v1.json), [presupuestos](../openapi/budgets.v1.json), [reportes](../openapi/reports.v1.json) y [metas](../openapi/savings-goals.v1.json) y [avisos](../openapi/notifications.v1.json).
 
-Errores: envelope error.code/message. Auth: 400 INVALID_REQUEST, 409 EMAIL_ALREADY_REGISTERED, 401 INVALID_CREDENTIALS/UNAUTHENTICATED/INVALID_CURRENT_PASSWORD. Perfil: 400 INVALID_REQUEST/INVALID_PROFILE y 409 INVALID_OPENING_DATE/OPENING_DATE_CONFLICT/EMAIL_ALREADY_REGISTERED. Movimientos/categorías/presupuestos: 400 INVALID_REQUEST, 404 NOT_FOUND y 409 CONFLICT; periodo de presupuesto inválido usa INVALID_PERIOD. Dashboard: 400 INVALID_PERIOD. Reportes: 400 INVALID_REPORT_PERIOD. Cálculos financieros: 422 DATA_OUT_OF_RANGE y 500 DATA_INTEGRITY_ERROR donde se comprueba integridad. El [filtro global](../../src/shared/filters/api-exception.filter.ts) traduce fallos de conectividad reconocidos a 503 DATA_UNAVAILABLE y oculta excepciones no clasificadas como 500 INTERNAL_ERROR; no prometer un código de dominio para toda violación SQL.
+Errores: envelope error.code/message. Auth: 400 INVALID_REQUEST, 409 EMAIL_ALREADY_REGISTERED, 401 INVALID_CREDENTIALS/UNAUTHENTICATED/INVALID_CURRENT_PASSWORD. Perfil: 400 INVALID_REQUEST/INVALID_PROFILE y 409 INVALID_OPENING_DATE/OPENING_DATE_CONFLICT/EMAIL_ALREADY_REGISTERED. Movimientos/categorías/presupuestos: 400 INVALID_REQUEST, 404 NOT_FOUND y 409 CONFLICT; periodo de presupuesto inválido usa INVALID_PERIOD. Dashboard y avisos: 400 INVALID_PERIOD. Reportes: 400 INVALID_REPORT_PERIOD. Cálculos financieros: 422 DATA_OUT_OF_RANGE y 500 DATA_INTEGRITY_ERROR donde se comprueba integridad. El [filtro global](../../src/shared/filters/api-exception.filter.ts) traduce fallos de conectividad reconocidos a 503 DATA_UNAVAILABLE y oculta excepciones no clasificadas como 500 INTERNAL_ERROR; no prometer un código de dominio para toda violación SQL.
 
 ## Algoritmos en pseudocódigo descriptivo
 
@@ -81,6 +83,8 @@ Errores: envelope error.code/message. Auth: 400 INVALID_REQUEST, 409 EMAIL_ALREA
 - **Ahorro (006/RF-1 a RF-5):** seleccionar metas creadas hasta corte no archivadas a ese corte → acumulado = aportes − retiros efectivos → restante = max(objetivo − acumulado,0) → estado completed si alcanza objetivo; si no, overdue solo ante fecha anterior al día local; resto active. La reserva recorre también metas archivadas. Gestión (006/RF-6 a RF-9): validar cuerpo estricto → restringir recurso por sesión → crear/editar o anexar entrada → volver a leer indicadores; archivar no libera reserva ni prohíbe entradas.
 - **Composición (004/RF-5 a RF-6; 007/RF-4 a RF-5):** fijar asOf una vez → abrir REPEATABLE READ → compartir EntityManager → calcular secciones → fallar todo ante excepción. En reportes, omitir meses cuyo fin sea anterior o igual a openingAt, iterar los restantes y calcular saldo al mínimo entre próximo inicio mensual y asOf; el corte del saldo sigue siendo inclusivo aunque el intervalo de actividad sea semiabierto.
 
+- **Avisos (008/RF-1 a RF-6):** fijar asOf una vez → resolver mes con ese instante → abrir RR → consultar presupuestos del mes y metas visibles al corte con el mismo manager → proyectar estados warning/exceeded/completed/overdue → deduplicar type:subjectId → ordenar type/subjectId → total=longitud. Propagar fallos sin fabricar vacío; no almacenar eventos.
+
 ## Decisiones observables y alternativas comparadas
 
 Estas son razones técnicas verificables hoy, no actas históricas de elección. Las alternativas no se atribuyen al equipo como decisiones pasadas.
@@ -92,7 +96,7 @@ Estas son razones técnicas verificables hoy, no actas históricas de elección.
 | NUMERIC y BigInt mantienen centavos/porcentajes exactos | Punto flotante para dinero puede alterar bordes | 002/RF-3; 004/RF-2 a RF-4; 005/RF-4 a RF-5; 006/RF-2 a RF-4; 007/RF-2 a RF-4 |
 | Sesiones opacas persistidas permiten revocación comprobada | JWT sin consulta de revocación no equivale al contrato actual | 001/RF-2 a RF-5 |
 | Servicios de indicadores reutilizados y snapshot compartido evitan cifras de versiones diferentes | Consultas independientes por sección pierden coherencia | 004/RF-5 a RF-6; 007/RF-5 |
-| Siete specs del estado actual y una propuesta, con plan/tareas/matriz compartidos | El detalle propio de 008 evita mezclar API existente con propuesta sin duplicar todo el resto | Todos |
+| Ocho specs con código, planes, tareas y resultados trazados | El detalle de cada spec conserva su alcance sin duplicar cálculos financieros | Todos |
 
 ## Capacidades transversales observadas
 
@@ -102,15 +106,15 @@ Estas son razones técnicas verificables hoy, no actas históricas de elección.
 
 Reutilizar node:test y los tests existentes. [coverage.md](coverage.md) vincula cada RF con código y prueba concreta, distingue cobertura parcial y registra ausencia. No añadir tests para documentos ni reconstruir funcionalidades.
 
-Ante una futura auditoría funcional autorizada: instalar dependencias con lockfile en el worktree; npm run lint, npm run typecheck y npm run build; npm test ejecuta build y todos los tests. Revisar [package.json](../../package.json) y [CI](../../.github/workflows/ci.yml) antes de ejecutar. PostgreSQL 17 debe ser aislado; TEST_DATABASE_URL debe apuntar a la base dedicada fintrack_be01_test con rol CREATEDB. Las suites crean y eliminan bases temporales propias; no usar la base local del usuario ni la de producción. No mostrar credenciales en los resultados.
+Para reproducir la auditoría funcional: instalar dependencias con lockfile en el worktree; npm run lint, npm run typecheck y npm run build; npm test ejecuta build y todos los tests. Revisar [package.json](../../package.json) y [CI](../../.github/workflows/ci.yml) antes de ejecutar. PostgreSQL 17 debe ser aislado; TEST_DATABASE_URL debe apuntar a la base dedicada fintrack_be01_test con rol CREATEDB. Las suites crean bases temporales propias; las históricas las eliminan y las nuevas las conservan hasta retirar la instancia descartable; no usar la base local del usuario ni la de producción. No mostrar credenciales en los resultados.
 
 Pruebas de periodos y aprovisionamiento cargan dist, por lo que requieren compilación previa. Los tests de contrato validan schemas/ejemplos; no acreditan HTTP ni PostgreSQL por sí solos. La suite HTTP/persistencia cubre autenticación, CRUD, cálculos y escenarios concurrentes; reportes tiene su suite independiente. Registrar SHA, comando, resultado, alcance y omisiones. Las mediciones de benchmark requieren su propia ejecución y no sustituyen tests funcionales.
 
-En esta entrega se inspeccionan fuentes y se revisa documentación; no se ejecutan suites funcionales, migraciones, seeds ni benchmark.
-## Precisiones y trabajo pendiente
+BE-SPECS ejecutó la suite completa: 82 aprobadas, 0 fallidas/omitidas; lint, tipos y build aprobados. Migraciones/seeds se probaron dentro de la suite sobre PostgreSQL aislado. No hubo benchmark nuevo. [Evidencia](../be-specs-delivery.md).
+## Precisiones y cierre
 
 Gestión de metas: el [controlador](../../src/modules/savings-goals/savings-goals.controller.ts) está registrado por SavingsGoalsModule, importado en DashboardModule. Los cuerpos inválidos producen 400 INVALID_REQUEST, recurso ajeno/inexistente 404 NOT_FOUND y restricciones reconocidas 23514 se traducen a 409 CONFLICT. No prometer 409 para toda concurrencia: 40001 no tiene traducción propia y pasa al filtro como 500 INTERNAL_ERROR, sin reintento automático. RF-6 a RF-9 de 006.
 
-La API ya existe; falta cargar su OpenAPI en el helper de contrato y probar las cuatro operaciones por HTTP. Reportes ya omite meses preapertura; falta una regresión dedicada para cuenta nueva/rango que cruce apertura. Son brechas de validación, no nuevas implementaciones funcionales. Ver [tareas 006](../specs/006-savings/tasks.md), [tareas 007](../specs/007-reports/tasks.md) y sus filas de cobertura.
+La API de metas conserva sus reglas y ahora carga su OpenAPI en el helper y tiene pruebas de cuatro operaciones HTTP. Reportes conserva la omisión preapertura y añade regresiones de apertura/corte, concurrencia y fallo global. Ver [tareas 006](../specs/006-savings/tasks.md), [tareas 007](../specs/007-reports/tasks.md) y sus filas de cobertura.
 
-Los pendientes se documentan por spec: [plan de validación 006](../specs/006-savings/plan.md), [plan de validación 007](../specs/007-reports/plan.md) y [plan de implementación 008](../specs/008-in-app-notifications/plan.md). Este último propone GET /notifications como proyección de estados actuales, sin tablas/migraciones ni jobs nuevos; su contrato no se presenta como disponible.
+Los resultados se documentan por spec: [plan de validación 006](../specs/006-savings/plan.md), [plan de validación 007](../specs/007-reports/plan.md) y [plan de implementación 008](../specs/008-in-app-notifications/plan.md). Este último implementa GET /notifications como proyección de estados actuales, sin tablas/migraciones ni jobs nuevos; su contrato está disponible en OpenAPI.

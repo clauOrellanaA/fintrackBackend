@@ -178,3 +178,79 @@ test('reports isolate another user and future months stop at asOf instead of pro
     { month: '2030-02', amount: '1108.21', cutoff: future.asOf },
   ]);
 });
+
+test('reports omit months before opening including equal month-end and retain empty months after opening', async () => {
+  const user = await createUser('recent-opening', await hashPassword(password), '50.00');
+  await source.query('UPDATE users SET opening_at=$1 WHERE id=$2', ['2026-02-01T04:00:00.000Z', user.id]);
+  const accessToken = await token(user.email);
+  const before = await (await reports('from=2025-12-01&to=2026-01-31', accessToken)).json();
+  assertContract('Reports', before);
+  assert.deepEqual(before.balanceEvolution, []);
+  assert.deepEqual(before.comparison, { income: '0.00', expense: '0.00', net: '0.00' });
+  assert.deepEqual(before.expenseDistribution, []);
+  const crossing = await (await reports('from=2026-01-01&to=2026-03-31', accessToken)).json();
+  assertContract('Reports', crossing);
+  assert.deepEqual(crossing.balanceEvolution, [
+    { month: '2026-02', amount: '50.00', cutoff: '2026-03-01T04:00:00.000Z' },
+    { month: '2026-03', amount: '50.00', cutoff: '2026-04-01T04:00:00.000Z' },
+  ]);
+  await source.query("INSERT INTO transactions(id,user_id,type,status,amount,currency,occurred_at) VALUES($1,$2,'income','posted','7.00','BOB',$3)", [randomUUID(), user.id, '2026-03-01T04:00:00.000Z']);
+  const boundary = await (await reports('from=2026-02-01&to=2026-02-28', accessToken)).json();
+  // Activity is half-open, but historical balance explicitly includes its cutoff.
+  assert.deepEqual(boundary.comparison, { income: '0.00', expense: '0.00', net: '0.00' });
+  assert.deepEqual(boundary.balanceEvolution, [{ month: '2026-02', amount: '57.00', cutoff: '2026-03-01T04:00:00.000Z' }]);
+});
+
+test('reports retain one PostgreSQL snapshot while a concurrent movement commits between sources', async () => {
+  const { MonthlySummaryService } = require('../dist/modules/transactions/monthly-summary.service');
+  const user = await createUser('snapshot', await hashPassword(password), '50.00');
+  await source.query("INSERT INTO transactions(id,user_id,type,status,amount,currency,occurred_at) VALUES($1,$2,'income','posted','10.00','BOB',$3)", [randomUUID(), user.id, '2026-01-10T12:00:00.000Z']);
+  const accessToken = await token(user.email);
+  const summaries = app.get(MonthlySummaryService);
+  const original = summaries.getForUser;
+  let writes = 0;
+  summaries.getForUser = async function (...args) {
+    const result = await original.apply(this, args);
+    if (args[0] === user.id && writes++ === 0) {
+      await source.query("INSERT INTO transactions(id,user_id,type,status,amount,currency,occurred_at) VALUES($1,$2,'expense','posted','5.00','BOB',$3)", [randomUUID(), user.id, '2026-01-11T12:00:00.000Z']);
+    }
+    return result;
+  };
+  try {
+    const response = await reports('from=2026-01-01&to=2026-01-31', accessToken);
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assertContract('Reports', body);
+    assert.equal(writes, 1);
+    assert.deepEqual(body.comparison, { income: '10.00', expense: '0.00', net: '10.00' });
+    assert.deepEqual(body.expenseDistribution, []);
+    assert.equal(body.balanceEvolution[0].amount, '60.00');
+  } finally { summaries.getForUser = original; }
+  const fresh = await (await reports('from=2026-01-01&to=2026-01-31', accessToken)).json();
+  assert.deepEqual(fresh.comparison, { income: '10.00', expense: '5.00', net: '5.00' });
+  assert.equal(fresh.expenseDistribution[0].amount, '5.00');
+  assert.equal(fresh.balanceEvolution[0].amount, '55.00');
+});
+
+test('reports fail globally with the error envelope when any financial source fails', async () => {
+  const constructors = [
+    require('../dist/modules/transactions/monthly-summary.service').MonthlySummaryService,
+    require('../dist/modules/transactions/expense-distribution.service').ExpenseDistributionService,
+    require('../dist/modules/transactions/balance.service').BalanceService,
+  ];
+  const accessToken = await token(owner.email);
+  for (const Constructor of constructors) {
+    const service = app.get(Constructor), original = service.getForUser;
+    service.getForUser = async () => { throw Object.assign(new Error('private source diagnostic'), { code: 'ECONNRESET' }); };
+    try {
+      const response = await reports('from=2026-01-01&to=2026-03-31', accessToken);
+      assert.equal(response.status, 503);
+      assert.equal(response.headers.get('Cache-Control'), 'no-store');
+      const body = await response.json();
+      assertContract('Error', body);
+      assert.deepEqual(Object.keys(body), ['error']);
+      assert.equal(body.error.code, 'DATA_UNAVAILABLE');
+      assert.ok(!JSON.stringify(body).includes('private source diagnostic'));
+    } finally { service.getForUser = original; }
+  }
+});

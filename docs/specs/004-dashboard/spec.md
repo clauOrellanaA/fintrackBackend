@@ -38,3 +38,9 @@ RF-1 a RF-6 trazados y pruebas de periodos, cifras, aislamiento, consistencia co
 Sin decisiones nuevas para describir este comportamiento. Las mediciones históricas de volumen no certifican rendimiento actual.
 
 Fuentes: [composición](../../../src/modules/dashboard/dashboard.service.ts), [periodos](../../../src/modules/dashboard/period.ts), [saldo](../../../src/modules/transactions/balance.service.ts), [resumen](../../../src/modules/transactions/monthly-summary.service.ts), [distribución](../../../src/modules/transactions/expense-distribution.service.ts), [OpenAPI](../../openapi/dashboard.v1.json), [005](../005-budgets/spec.md), [006](../006-savings/spec.md) y [cobertura](../../sdd/coverage.md).
+
+## Validación BE-SPECS
+
+Validación local independiente BE-SPECS, 2026-10-30: código/tests/OpenAPI 4bea0d915c4197346cdba7b040016b23edb00752; 82 pruebas aprobadas, 0 fallidas, 0 omitidas. Lint, tipos y build aprobados. [Entrega](../../be-specs-delivery.md) · [Matriz de 46 RF](../../sdd/coverage.md). No se acredita CI remota, merge ni despliegue.
+
+Los resultados acreditan los escenarios trazados, sin prometer cobertura exhaustiva de todas las combinaciones ni garantías adicionales fuera de los RF.

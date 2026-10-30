@@ -33,6 +33,12 @@ RF-1 a RF-4 trazados; ejecución satisfactoria de consulta/edición, aislamiento
 
 ## Dudas y evidencia
 
-[NO VERIFICADO] Cobertura dinámica específica de todas las variantes de saldo inicial editado; la prueba HTTP identificada no demuestra cada borde del formato.
+Core incluye pruebas HTTP de importes negativos, -0.00, extremos, formatos inválidos, preservación parcial y conflicto con metas. No se afirma cobertura exhaustiva de cada combinación.
 
 Fuentes: [controlador](../../../src/modules/users/users.controller.ts), [servicio](../../../src/modules/users/users.service.ts), [entidad](../../../src/modules/users/entities/user.entity.ts), [contrato](../../openapi/users.v1.json) y [cobertura](../../sdd/coverage.md).
+
+## Validación BE-SPECS
+
+Validación local independiente BE-SPECS, 2026-10-30: código/tests/OpenAPI 4bea0d915c4197346cdba7b040016b23edb00752; 82 pruebas aprobadas, 0 fallidas, 0 omitidas. Lint, tipos y build aprobados. [Entrega](../../be-specs-delivery.md) · [Matriz de 46 RF](../../sdd/coverage.md). No se acredita CI remota, merge ni despliegue.
+
+Los resultados acreditan los escenarios trazados, sin prometer cobertura exhaustiva de todas las combinaciones ni garantías adicionales fuera de los RF.

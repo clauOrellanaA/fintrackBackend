@@ -1,6 +1,6 @@
 # Plan — 007 Reportes financieros
 
-**Implementación existente; validación pendiente.** Base 59acca46ad7a0c43d5ac00bc5c548b6acc227109. [Spec](spec.md) · [Tareas](tasks.md). No se propone reimplementar reportes ni alterar el fix integrado de cuentas nuevas.
+**Implementación y validación local completadas.** Código 4bea0d915c4197346cdba7b040016b23edb00752; 2026-10-30. [Spec](spec.md) · [Tareas](tasks.md). No se propone reimplementar reportes ni alterar el fix integrado de cuentas nuevas.
 
 ## Módulos, datos y contrato actual
 
@@ -16,8 +16,10 @@ Fijar asOf → resolver rango → abrir REPEATABLE READ → obtener usuario y su
 
 La omisión preapertura ya está implementada: evita inventar saldo histórico de una cuenta inexistente. Reutilizar servicios y snapshot mantiene coherencia; consultas independientes o saldos cero fabricados no son equivalentes. No cambiar cortes, devoluciones ni redondeo como parte de las tareas de validación.
 
-## Estrategia de tests pendientes
+## Validación ejecutada
 
-La suite de reportes identifica casos de período, cifras, aislamiento y futuro. Falta una regresión dedicada de rango previo a apertura, igualdad de fin/apertura y rango que cruza apertura; también escenarios dedicados de escritura concurrente y fallo de una fuente. Registrar su resultado real y luego verificar RF-1 a RF-5. [Matriz](../../sdd/coverage.md).
+Validación local independiente BE-SPECS, 2026-10-30: código/tests/OpenAPI 4bea0d915c4197346cdba7b040016b23edb00752; 82 pruebas aprobadas, 0 fallidas, 0 omitidas. Lint, tipos y build aprobados. [Entrega](../../be-specs-delivery.md) · [Matriz de 46 RF](../../sdd/coverage.md). CI remota, merge y despliegue no acreditados.
 
-Prerrequisito: dependencias con lockfile, build y PostgreSQL aislado con TEST_DATABASE_URL dedicado fintrack_be01_test y rol CREATEDB. Reutilizar node:test y fixtures sintéticos. Ninguna suite ni migración se ejecuta durante la redacción del plan.
+La suite de reportes ejecutó siete escenarios: acceso privado, periodos, cifras, aislamiento/futuro, apertura reciente/corte exacto/meses vacíos, escritura concurrente real y fallo global de tres fuentes. La omisión preapertura ya estaba integrada y no se reimplementó.
+
+Prerrequisito reproducible: dependencias del lockfile, build y PostgreSQL 17 dedicado. TEST_DATABASE_URL debe apuntar a fintrack_be01_test con rol CREATEDB. Las suites nuevas conservan sus bases en la instancia descartable hasta retirarla; no usan la base del usuario.

@@ -1,4 +1,4 @@
-# Tareas documentales SDD
+# Tareas SDD y auditoría funcional
 
 ## Histórico SDD-01 — no acredita el estado actual
 
@@ -29,13 +29,13 @@ Base histórica: bf57ebcd582706ab467251baf2d875fddcbb5fa2; 2026-10-28. Solo docu
 - [x] **T12 — Comprobar entrega documental** (20 min; depende de T11; RF: todos, transversal).
   Hecho cuando: se comprueben enlaces locales, numeración/trazabilidad, seis principios y límite de líneas, ausencia de cambios fuera de docs y formato del diff, y se registren comandos/resultados reales.
 
-## Auditoría funcional posterior, fuera de esta entrega
+## Auditoría funcional BE-SPECS
 
-- [ ] **A1 — Auditar RF contra ejecución actual** (requiere sesión y entorno propios; no forma parte de tareas documentales ni se promete duración de 30 min).
+- [x] **A1 — Auditar RF contra ejecución actual** (requiere sesión y entorno propios; no forma parte de tareas documentales ni se promete duración de 30 min).
   Hecho cuando: cada RF tenga resultado de test ejecutado sobre un SHA registrado, las lagunas y fallos sean explícitos y se emita un veredicto de cumplimiento.
   RF: todos. Dependencias: infraestructura PostgreSQL aislada y configuración válida según plan; identificar cobertura no satisface este criterio.
 
-No hay tareas de reimplementación ni autorización para iniciar cambios funcionales. El ejemplo «implementar solo T2» se usa como modelo de control de alcance en los prompts; no autoriza código en esta adopción.
+SDD-01/SDD-02 no autorizaban implementación por sí mismos. La autorización posterior del usuario para completar los specs inicia BE-SPECS; el ejemplo «implementar solo T2» sigue siendo un modelo de alcance, no una orden adicional.
 
 ## Evidencia de cierre documental — 2026-10-28
 
@@ -46,8 +46,14 @@ La comprobación principal de solo lectura mediante PowerShell here-string canal
 Git diff --check terminó con código 0; como no incluye archivos nuevos sin seguimiento, estos se comprobaron además con el escaneo explícito anterior. Git status mostró únicamente los 13 documentos nuevos, sin archivos rastreados modificados. Rama planing; worktree C:/fintrack/worktrees/backend/planing-sdd; base bf57ebcd582706ab467251baf2d875fddcbb5fa2.
 
 No se ejecutaron suites funcionales, migraciones, seeds ni benchmark. A1 continúa pendiente y el cumplimiento funcional de las specs sigue **NO VERIFICADO**.
-## Planificación pendiente por spec
+## Entregas por spec
 
 - [006 — Tareas de validación de metas de ahorro](../specs/006-savings/tasks.md).
 - [007 — Tareas de validación de reportes](../specs/007-reports/tasks.md).
 - [008 — Tareas de implementación de avisos internos](../specs/008-in-app-notifications/tasks.md).
+
+## Cierre funcional actual — 2026-10-30
+
+A1 completada para código 4bea0d915c4197346cdba7b040016b23edb00752: 46 RF con test concreto y resultado Q1 en [coverage.md](coverage.md); 82 aprobadas, 0 fallidas/omitidas sobre PostgreSQL 17.11 aislado. Lint, tipos y build aprobados; revisión independiente sin defectos de código bloqueantes. La evidencia de 2026-10-28 anterior sigue como histórico.
+
+006/T1–T5, 007/T1–T4 y 008/N1–N12 se cierran por aceptación funcional actual. [La entrega](../be-specs-delivery.md) registra comandos, límites y ausencia de evidencia histórica rojo→verde. Interfaz y CI remota se validan por separado.

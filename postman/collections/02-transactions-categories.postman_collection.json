@@ -1,0 +1,704 @@
+{
+  "info": {
+    "name": "FinTrack - 02 Movimientos y categorías",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "FinTrack API v1. Selecciona el entorno Local o Render; baseUrl incluye /api/v1. Completa las credenciales en valores locales del entorno. Inicia sesión en Acceso y perfil para capturar accessToken. Los IDs se guardan al crear recursos. Esta plantilla portable procede de transactions.v1.json. Las modificaciones en Postman no se sincronizan automáticamente con Git."
+  },
+  "item": [
+    {
+      "name": "Categorías",
+      "item": [
+        {
+          "name": "Renombrar categoría",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const required = [\"categoryId\",\"accessToken\"];",
+                  "const missing = required.filter(key => {const value = pm.variables.get(key); return typeof value !== 'string' || value.trim() === '' || value.includes('{{');});",
+                  "if (missing.length) {console.error('Completa las variables locales del entorno: ' + missing.join(', ')); pm.execution.skipRequest();}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Estado HTTP 200', function () {pm.response.to.have.status(200);});",
+                  "pm.test('JSON válido', function () {pm.response.json();});",
+                  "pm.test('Respuesta privada sin caché', function () {pm.response.to.have.header('Cache-Control', 'no-store');});"
+                ]
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman actualizada {{$timestamp}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/categories/{{categoryId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "categories",
+                "{{categoryId}}"
+              ]
+            },
+            "description": "\n\nPATCH /categories/{id}. Completa las variables requeridas en el entorno seleccionado: categoryId, accessToken. Ejemplo preparado desde el contrato; no se ejecutó esta operación en Render durante la creación."
+          },
+          "response": []
+        },
+        {
+          "name": "Eliminar categoría",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const required = [\"categoryId\",\"accessToken\"];",
+                  "const missing = required.filter(key => {const value = pm.variables.get(key); return typeof value !== 'string' || value.trim() === '' || value.includes('{{');});",
+                  "if (missing.length) {console.error('Completa las variables locales del entorno: ' + missing.join(', ')); pm.execution.skipRequest();}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Estado HTTP 204', function () {pm.response.to.have.status(204);});",
+                  "pm.test('Respuesta sin contenido', function () {pm.expect(pm.response.text()).to.equal('');});",
+                  "pm.test('Respuesta privada sin caché', function () {pm.response.to.have.header('Cache-Control', 'no-store');});"
+                ]
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/categories/{{categoryId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "categories",
+                "{{categoryId}}"
+              ]
+            },
+            "description": "Deletes a category only when no budget references it. In the same transaction, existing transactions become uncategorized. This does not delete transactions.\n\nDELETE /categories/{id}. Completa las variables requeridas en el entorno seleccionado: categoryId, accessToken. Ejemplo preparado desde el contrato; no se ejecutó esta operación en Render durante la creación."
+          },
+          "response": []
+        },
+        {
+          "name": "Listar categorías",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const required = [\"accessToken\"];",
+                  "const missing = required.filter(key => {const value = pm.variables.get(key); return typeof value !== 'string' || value.trim() === '' || value.includes('{{');});",
+                  "if (missing.length) {console.error('Completa las variables locales del entorno: ' + missing.join(', ')); pm.execution.skipRequest();}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Estado HTTP 200', function () {pm.response.to.have.status(200);});",
+                  "pm.test('JSON válido', function () {pm.response.json();});",
+                  "pm.test('Respuesta privada sin caché', function () {pm.response.to.have.header('Cache-Control', 'no-store');});"
+                ]
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/categories",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "categories"
+              ]
+            },
+            "description": "Lists categories owned by the authenticated user ordered by name then id.\n\nGET /categories. Completa las variables requeridas en el entorno seleccionado: accessToken. Ejemplo preparado desde el contrato; no se ejecutó esta operación en Render durante la creación."
+          },
+          "response": []
+        },
+        {
+          "name": "Crear categoría",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const required = [\"accessToken\"];",
+                  "const missing = required.filter(key => {const value = pm.variables.get(key); return typeof value !== 'string' || value.trim() === '' || value.includes('{{');});",
+                  "if (missing.length) {console.error('Completa las variables locales del entorno: ' + missing.join(', ')); pm.execution.skipRequest();}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Estado HTTP 201', function () {pm.response.to.have.status(201);});",
+                  "pm.test('JSON válido', function () {pm.response.json();});",
+                  "pm.test('Respuesta privada sin caché', function () {pm.response.to.have.header('Cache-Control', 'no-store');});",
+                  "if (pm.response.code === 201) {const body = pm.response.json(); if (body.id) pm.environment.set('categoryId', body.id);}"
+                ]
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman {{$timestamp}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/categories",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "categories"
+              ]
+            },
+            "description": "\n\nPOST /categories. Completa las variables requeridas en el entorno seleccionado: accessToken. Ejemplo preparado desde el contrato; no se ejecutó esta operación en Render durante la creación."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Movimientos",
+      "item": [
+        {
+          "name": "Consultar movimiento",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const required = [\"transactionId\",\"accessToken\"];",
+                  "const missing = required.filter(key => {const value = pm.variables.get(key); return typeof value !== 'string' || value.trim() === '' || value.includes('{{');});",
+                  "if (missing.length) {console.error('Completa las variables locales del entorno: ' + missing.join(', ')); pm.execution.skipRequest();}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Estado HTTP 200', function () {pm.response.to.have.status(200);});",
+                  "pm.test('JSON válido', function () {pm.response.json();});",
+                  "pm.test('Respuesta privada sin caché', function () {pm.response.to.have.header('Cache-Control', 'no-store');});"
+                ]
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/transactions/{{transactionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "transactions",
+                "{{transactionId}}"
+              ]
+            },
+            "description": "Returns a posted or void transaction owned by the authenticated user.\n\nGET /transactions/{id}. Completa las variables requeridas en el entorno seleccionado: transactionId, accessToken. Ejemplo preparado desde el contrato; no se ejecutó esta operación en Render durante la creación."
+          },
+          "response": []
+        },
+        {
+          "name": "Actualizar movimiento",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const required = [\"transactionId\",\"accessToken\"];",
+                  "const missing = required.filter(key => {const value = pm.variables.get(key); return typeof value !== 'string' || value.trim() === '' || value.includes('{{');});",
+                  "if (missing.length) {console.error('Completa las variables locales del entorno: ' + missing.join(', ')); pm.execution.skipRequest();}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Estado HTTP 200', function () {pm.response.to.have.status(200);});",
+                  "pm.test('JSON válido', function () {pm.response.json();});",
+                  "pm.test('Respuesta privada sin caché', function () {pm.response.to.have.header('Cache-Control', 'no-store');});"
+                ]
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Movimiento actualizado desde Postman\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/transactions/{{transactionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "transactions",
+                "{{transactionId}}"
+              ]
+            },
+            "description": "Updates transaction details only while status is posted. Owner, currency and status are server controlled. Voided transactions are immutable.\n\nPATCH /transactions/{id}. Completa las variables requeridas en el entorno seleccionado: transactionId, accessToken. Ejemplo preparado desde el contrato; no se ejecutó esta operación en Render durante la creación."
+          },
+          "response": []
+        },
+        {
+          "name": "Anular movimiento",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const required = [\"transactionId\",\"accessToken\"];",
+                  "const missing = required.filter(key => {const value = pm.variables.get(key); return typeof value !== 'string' || value.trim() === '' || value.includes('{{');});",
+                  "if (missing.length) {console.error('Completa las variables locales del entorno: ' + missing.join(', ')); pm.execution.skipRequest();}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Estado HTTP 204', function () {pm.response.to.have.status(204);});",
+                  "pm.test('Respuesta sin contenido', function () {pm.expect(pm.response.text()).to.equal('');});",
+                  "pm.test('Respuesta privada sin caché', function () {pm.response.to.have.header('Cache-Control', 'no-store');});"
+                ]
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/transactions/{{transactionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "transactions",
+                "{{transactionId}}"
+              ]
+            },
+            "description": "Changes posted to void without physically deleting the transaction. Repeating the operation is idempotent. Voided transactions are excluded from dashboard calculations.\n\nDELETE /transactions/{id}. Completa las variables requeridas en el entorno seleccionado: transactionId, accessToken. Ejemplo preparado desde el contrato; no se ejecutó esta operación en Render durante la creación."
+          },
+          "response": []
+        },
+        {
+          "name": "Listar movimientos",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const required = [\"accessToken\"];",
+                  "const missing = required.filter(key => {const value = pm.variables.get(key); return typeof value !== 'string' || value.trim() === '' || value.includes('{{');});",
+                  "if (missing.length) {console.error('Completa las variables locales del entorno: ' + missing.join(', ')); pm.execution.skipRequest();}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Estado HTTP 200', function () {pm.response.to.have.status(200);});",
+                  "pm.test('JSON válido', function () {pm.response.json();});",
+                  "pm.test('Respuesta privada sin caché', function () {pm.response.to.have.header('Cache-Control', 'no-store');});"
+                ]
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/transactions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "transactions"
+              ],
+              "query": [
+                {
+                  "value": "{{transactionFrom}}",
+                  "key": "from",
+                  "description": "Optional inclusive lower bound.",
+                  "disabled": true
+                },
+                {
+                  "value": "{{transactionTo}}",
+                  "key": "to",
+                  "description": "Optional exclusive upper bound.",
+                  "disabled": true
+                },
+                {
+                  "value": "expense",
+                  "key": "type",
+                  "disabled": true
+                },
+                {
+                  "value": "posted",
+                  "key": "status",
+                  "disabled": true
+                },
+                {
+                  "value": "Postman",
+                  "key": "q",
+                  "description": "Case-insensitive substring search in description and category name.",
+                  "disabled": true
+                },
+                {
+                  "value": "1",
+                  "key": "page",
+                  "disabled": true
+                },
+                {
+                  "value": "20",
+                  "key": "pageSize",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Returns only records owned by the authenticated user. Defaults to posted transactions, ordered by occurredAt descending then id descending. Date bounds are instants; from is inclusive and to is exclusive. Unknown or repeated query parameters are rejected.\n\nGET /transactions. Completa las variables requeridas en el entorno seleccionado: accessToken. Ejemplo preparado desde el contrato; no se ejecutó esta operación en Render durante la creación."
+          },
+          "response": [
+            {
+              "name": "200 - Ejemplo publicado: empty",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/transactions",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "transactions"
+                  ],
+                  "query": [
+                    {
+                      "value": "{{transactionFrom}}",
+                      "key": "from",
+                      "description": "Optional inclusive lower bound.",
+                      "disabled": true
+                    },
+                    {
+                      "value": "{{transactionTo}}",
+                      "key": "to",
+                      "description": "Optional exclusive upper bound.",
+                      "disabled": true
+                    },
+                    {
+                      "value": "expense",
+                      "key": "type",
+                      "disabled": true
+                    },
+                    {
+                      "value": "posted",
+                      "key": "status",
+                      "disabled": true
+                    },
+                    {
+                      "value": "Postman",
+                      "key": "q",
+                      "description": "Case-insensitive substring search in description and category name.",
+                      "disabled": true
+                    },
+                    {
+                      "value": "1",
+                      "key": "page",
+                      "disabled": true
+                    },
+                    {
+                      "value": "20",
+                      "key": "pageSize",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Returns only records owned by the authenticated user. Defaults to posted transactions, ordered by occurredAt descending then id descending. Date bounds are instants; from is inclusive and to is exclusive. Unknown or repeated query parameters are rejected.\n\nGET /transactions. Completa las variables requeridas en el entorno seleccionado: accessToken. Ejemplo preparado desde el contrato; no se ejecutó esta operación en Render durante la creación."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "Cache-Control",
+                  "value": "no-store"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"items\": [],\n  \"page\": 1,\n  \"pageSize\": 20,\n  \"totalItems\": 0,\n  \"totalPages\": 0\n}"
+            }
+          ]
+        },
+        {
+          "name": "Crear movimiento",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const required = [\"accessToken\"];",
+                  "const missing = required.filter(key => {const value = pm.variables.get(key); return typeof value !== 'string' || value.trim() === '' || value.includes('{{');});",
+                  "if (missing.length) {console.error('Completa las variables locales del entorno: ' + missing.join(', ')); pm.execution.skipRequest();}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Estado HTTP 201', function () {pm.response.to.have.status(201);});",
+                  "pm.test('JSON válido', function () {pm.response.json();});",
+                  "pm.test('Respuesta privada sin caché', function () {pm.response.to.have.header('Cache-Control', 'no-store');});",
+                  "if (pm.response.code === 201) {const body = pm.response.json(); if (body.id) pm.environment.set('transactionId', body.id);}"
+                ]
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"expense\",\n  \"amount\": \"25.00\",\n  \"occurredAt\": \"{{$isoTimestamp}}\",\n  \"description\": \"Prueba Postman\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/transactions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "transactions"
+              ]
+            },
+            "description": "Creates a posted transaction in BOB. Currency and owner are server controlled. Amount is positive and exact. The occurredAt instant cannot precede the user's openingAt.\n\nPOST /transactions. Completa las variables requeridas en el entorno seleccionado: accessToken. Ejemplo preparado desde el contrato; no se ejecutó esta operación en Render durante la creación."
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if (!pm.environment.get('baseUrl')) {",
+          "  console.error('Selecciona el entorno FinTrack - Local o FinTrack - Render.');",
+          "  pm.execution.skipRequest();",
+          "} else {",
+          "  const now = new Date();",
+          "  const parts = new Intl.DateTimeFormat('en-CA', {timeZone: 'America/La_Paz', year: 'numeric', month: '2-digit', day: '2-digit'}).formatToParts(now);",
+          "  const date = Object.fromEntries(parts.map(p => [p.type, p.value]));",
+          "  const month = date.year + '-' + date.month;",
+          "  const today = month + '-' + date.day;",
+          "  const defaults = {month: month, reportFrom: month + '-01', reportTo: today, transactionFrom: month + '-01T00:00:00-04:00', transactionTo: now.toISOString()};",
+          "  Object.keys(defaults).forEach(key => { if (!pm.variables.get(key)) pm.variables.set(key, defaults[key]); });",
+          "}"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000/api/v1"
+    },
+    {
+      "key": "categoryId",
+      "value": ""
+    },
+    {
+      "key": "transactionFrom",
+      "value": ""
+    },
+    {
+      "key": "transactionId",
+      "value": ""
+    },
+    {
+      "key": "transactionTo",
+      "value": ""
+    }
+  ]
+}

@@ -104,7 +104,7 @@ export class TransactionsService {
     const to = query.to !== undefined ? normalizeDate(query.to, 'to') : undefined;
     if (from && to && from >= to) throw new BadRequestException({ error: { code: 'INVALID_REQUEST', message: 'from debe ser menor que to.' } });
     const type = typeof query.type === 'string' ? query.type : undefined;
-    if (type && !VALID_TYPE.has(type)) throw new BadRequestException({ error: { code: 'INVALID_REQUEST', message: 'type debe ser income o expense.' } });
+    if (type !== undefined && !VALID_TYPE.has(type)) throw new BadRequestException({ error: { code: 'INVALID_REQUEST', message: 'type debe ser income o expense.' } });
     const status = typeof query.status === 'string' ? query.status : 'posted';
     if (status !== 'all' && !VALID_STATUS.has(status)) throw new BadRequestException({ error: { code: 'INVALID_REQUEST', message: 'status debe ser posted, void o all.' } });
     const parsePage = (value: string | undefined, fallback: number, field: string) => {
@@ -159,7 +159,7 @@ export class TransactionsService {
       ? null
       : typeof rawBody.categoryId === 'string' ? rawBody.categoryId
         : (() => { throw new BadRequestException({ error: { code: 'INVALID_REQUEST', message: 'categoryId debe ser UUID o null.' } }); })();
-    if (categoryId && !isUuid(categoryId)) throw new BadRequestException({ error: { code: 'INVALID_REQUEST', message: 'categoryId debe ser un UUID valido.' } });
+    if (categoryId !== null && !isUuid(categoryId)) throw new BadRequestException({ error: { code: 'INVALID_REQUEST', message: 'categoryId debe ser un UUID valido.' } });
     const repo = this.persistence.source.getRepository(Transaction);
     const category = categoryId ? await this.persistence.source.getRepository(Category).findOne({ where: { id: categoryId, userId } }) : null;
     if (categoryId && !category) throw new NotFoundException({ error: { code: 'NOT_FOUND', message: 'Categoria no encontrada.' } });

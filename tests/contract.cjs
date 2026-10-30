@@ -9,13 +9,15 @@ const transactionsOpenapi = JSON.parse(readFileSync(join(__dirname, '../docs/ope
 const budgetsOpenapi = JSON.parse(readFileSync(join(__dirname, '../docs/openapi/budgets.v1.json'), 'utf8'));
 const reportsOpenapi = JSON.parse(readFileSync(join(__dirname, '../docs/openapi/reports.v1.json'), 'utf8'));
 const usersOpenapi = JSON.parse(readFileSync(join(__dirname, '../docs/openapi/users.v1.json'), 'utf8'));
-const documents = [openapi, transactionsOpenapi, budgetsOpenapi, reportsOpenapi, usersOpenapi];
+const savingsGoalsOpenapi = JSON.parse(readFileSync(join(__dirname, '../docs/openapi/savings-goals.v1.json'), 'utf8'));
+const notificationsOpenapi = JSON.parse(readFileSync(join(__dirname, '../docs/openapi/notifications.v1.json'), 'utf8'));
+const documents = [openapi, transactionsOpenapi, budgetsOpenapi, reportsOpenapi, usersOpenapi, savingsGoalsOpenapi, notificationsOpenapi];
 const ajv = new Ajv2020({ allErrors: true });
 addFormats(ajv);
 const validators = new Map();
 
-function assertContract(name, value) {
-  const document = documents.find(specification => name in specification.components.schemas);
+function assertContract(name, value, specification) {
+  const document = specification ?? documents.find(candidate => name in candidate.components.schemas);
   assert.ok(document, `No OpenAPI schema named ${name}.`);
   const key = `${document.info.title}:${name}`;
   if (!validators.has(key)) {
@@ -26,4 +28,4 @@ function assertContract(name, value) {
   assert.ok(validate(value), `${name} violates OpenAPI: ${JSON.stringify(validate.errors)}`);
 }
 
-module.exports = { assertContract, openapi, transactionsOpenapi, budgetsOpenapi, reportsOpenapi, usersOpenapi };
+module.exports = { assertContract, openapi, transactionsOpenapi, budgetsOpenapi, reportsOpenapi, usersOpenapi, savingsGoalsOpenapi, notificationsOpenapi };

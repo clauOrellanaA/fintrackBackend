@@ -23,6 +23,8 @@ Este índice organiza la documentación sin mover documentos existentes ni cambi
 
 001–008 describen comportamiento implementado. Los resultados de 006/007/008 están en sus specs, planes y tasks. La [cobertura](sdd/coverage.md) traza los 46 RF a QA local: 82 aprobadas, 0 fallidas/omitidas. [BE-SPECS](be-specs-delivery.md) distingue validación local, CI remota y dependencia de presentación externa. Salud, configuración y aprovisionamiento se describen como capacidades transversales en el plan.
 
+Los ocho specs incluyen 28 historias de usuario y 28 issues propuestas, relacionadas con sus 46 RF. Son propuestas documentales de seguimiento retrospectivo; el [flujo de trazabilidad](sdd/README.md#historias-e-issues-propuestas) distingue ese estado de la implementación y la validación existentes.
+
 ## Contratos y operación existentes
 
 - OpenAPI: [dashboard](openapi/dashboard.v1.json), [usuarios y seguridad](openapi/users.v1.json), [transacciones y categorías](openapi/transactions.v1.json), [presupuestos](openapi/budgets.v1.json), [reportes](openapi/reports.v1.json) y [metas](openapi/savings-goals.v1.json) y [avisos](openapi/notifications.v1.json).

@@ -4,9 +4,27 @@
 
 Registrar ingresos y gastos y mantener un historial propio clasificable, consultable y corregible sin perder movimientos anulados.
 
-## Usuarios e historias
+## Historias de usuario
 
-Titular autenticado: quiero registrar y consultar mis movimientos, corregir los vigentes, anular errores y administrar mis categorías.
+| ID | Historia de usuario | Criterios de aceptación |
+| --- | --- | --- |
+| `HU-003-01` | Como titular autenticado, quiero registrar ingresos y gastos con su fecha y clasificación opcional para mantener mi historial financiero. | `003/RF-1` |
+| `HU-003-02` | Como titular autenticado, quiero consultar y filtrar mi historial y abrir el detalle de un movimiento para encontrar y revisar mis operaciones. | `003/RF-2`, `003/RF-3` (detalle) |
+| `HU-003-03` | Como titular autenticado, quiero corregir movimientos vigentes o anular errores conservando su registro para mantener un historial fiable. | `003/RF-3`, `003/RF-4` |
+| `HU-003-04` | Como titular autenticado, quiero administrar mis categorías y eliminar las que no tienen presupuestos asociados para organizar mis movimientos sin perderlos. | `003/RF-5`, `003/RF-6` |
+
+## Issues propuestas
+
+Propuestas documentales de seguimiento retrospectivo, sin creación en GitHub. El comportamiento descrito está implementado; su validación histórica BE-SPECS se conserva en esta spec y en la [matriz de cobertura](../../sdd/coverage.md). El estado de propuesta corresponde al seguimiento documental y no representa trabajo de implementación pendiente.
+
+Los criterios de aceptación de cada historia y propuesta son los RF referenciados, cuyo texto normativo se conserva en la sección siguiente.
+
+| ID local | Título propuesto | Historia relacionada | Criterios de aceptación |
+| --- | --- | --- | --- |
+| `ISSUE-003-01` | Registro de movimientos | `HU-003-01` | `003/RF-1` |
+| `ISSUE-003-02` | Consulta y búsqueda del historial | `HU-003-02` | `003/RF-2`, `003/RF-3` (detalle) |
+| `ISSUE-003-03` | Corrección y anulación de movimientos | `HU-003-03` | `003/RF-3`, `003/RF-4` |
+| `ISSUE-003-04` | Gestión de categorías | `HU-003-04` | `003/RF-5`, `003/RF-6` |
 
 ## Requisitos funcionales y aceptación EARS
 

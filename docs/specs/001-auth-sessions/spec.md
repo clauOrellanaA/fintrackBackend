@@ -4,9 +4,27 @@
 
 Permitir que una persona cree una cuenta y acceda de forma privada a sus finanzas, con cierre de sesión y cambio de contraseña. Especificación retrospectiva de la línea base indicada en el [flujo SDD](../../sdd/README.md).
 
-## Usuarios e historias
+## Historias de usuario
 
-Persona sin cuenta: quiero registrarme y empezar con finanzas vacías. Titular de cuenta: quiero iniciar/cerrar sesión y cambiar mi contraseña para controlar el acceso.
+| ID | Historia de usuario | Criterios de aceptación |
+| --- | --- | --- |
+| `HU-001-01` | Como persona sin cuenta, quiero registrarme y comenzar con mis finanzas vacías para disponer de un espacio financiero propio. | `001/RF-1` |
+| `HU-001-02` | Como titular de una cuenta, quiero iniciar sesión y acceder privadamente a mis finanzas para consultar solamente mis datos mientras mi sesión sea válida. | `001/RF-2`, `001/RF-3` |
+| `HU-001-03` | Como titular autenticado, quiero cerrar la sesión que estoy utilizando para finalizar su acceso sin revocar mis otras sesiones. | `001/RF-4` |
+| `HU-001-04` | Como titular autenticado, quiero cambiar mi contraseña proporcionando la actual para renovar mi credencial y revocar las sesiones anteriores. | `001/RF-5` |
+
+## Issues propuestas
+
+Propuestas documentales de seguimiento retrospectivo, sin creación en GitHub. El comportamiento descrito está implementado; su validación histórica BE-SPECS se conserva en esta spec y en la [matriz de cobertura](../../sdd/coverage.md). El estado de propuesta corresponde al seguimiento documental y no representa trabajo de implementación pendiente.
+
+Los criterios de aceptación de cada historia y propuesta son los RF referenciados, cuyo texto normativo se conserva en la sección siguiente.
+
+| ID local | Título propuesto | Historia relacionada | Criterios de aceptación |
+| --- | --- | --- | --- |
+| `ISSUE-001-01` | Registro de cuenta | `HU-001-01` | `001/RF-1` |
+| `ISSUE-001-02` | Inicio de sesión y acceso privado | `HU-001-02` | `001/RF-2`, `001/RF-3` |
+| `ISSUE-001-03` | Cierre de sesión | `HU-001-03` | `001/RF-4` |
+| `ISSUE-001-04` | Cambio de contraseña | `HU-001-04` | `001/RF-5` |
 
 ## Requisitos funcionales y aceptación EARS
 

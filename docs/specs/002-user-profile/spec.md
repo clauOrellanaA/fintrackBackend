@@ -4,9 +4,25 @@
 
 Permitir al titular consultar y corregir su identidad visible y el punto de partida de sus finanzas sin acceder a cuentas ajenas.
 
-## Usuarios e historias
+## Historias de usuario
 
-Titular autenticado: quiero consultar mi perfil y ajustar nombre, correo, saldo y fecha inicial para que mis indicadores partan de datos correctos.
+| ID | Historia de usuario | Criterios de aceptación |
+| --- | --- | --- |
+| `HU-002-01` | Como titular autenticado, quiero consultar mi perfil para conocer mi identidad y el punto de partida de mis finanzas. | `002/RF-1` |
+| `HU-002-02` | Como titular autenticado, quiero modificar mi nombre o correo conservando los demás datos para mantener actualizada mi identidad. | `002/RF-2`, `002/RF-4` (conflicto de correo) |
+| `HU-002-03` | Como titular autenticado, quiero corregir mi saldo y fecha iniciales para que mis indicadores partan de datos exactos y compatibles con mi historial. | `002/RF-2`, `002/RF-3`, `002/RF-4` |
+
+## Issues propuestas
+
+Propuestas documentales de seguimiento retrospectivo, sin creación en GitHub. El comportamiento descrito está implementado; su validación histórica BE-SPECS se conserva en esta spec y en la [matriz de cobertura](../../sdd/coverage.md). El estado de propuesta corresponde al seguimiento documental y no representa trabajo de implementación pendiente.
+
+Los criterios de aceptación de cada historia y propuesta son los RF referenciados, cuyo texto normativo se conserva en la sección siguiente.
+
+| ID local | Título propuesto | Historia relacionada | Criterios de aceptación |
+| --- | --- | --- | --- |
+| `ISSUE-002-01` | Consulta del perfil propio | `HU-002-01` | `002/RF-1` |
+| `ISSUE-002-02` | Actualización de identidad | `HU-002-02` | `002/RF-2`, `002/RF-4` (conflicto de correo) |
+| `ISSUE-002-03` | Corrección del punto de partida financiero | `HU-002-03` | `002/RF-2`, `002/RF-3`, `002/RF-4` |
 
 ## Requisitos funcionales y aceptación EARS
 

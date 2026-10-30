@@ -4,9 +4,25 @@
 
 Permitir al titular fijar límites por categoría y mes y conocer su consumo real para identificar cercanía o superación del límite.
 
-## Usuarios e historias
+## Historias de usuario
 
-Titular autenticado: quiero crear, consultar, ajustar y eliminar mis presupuestos; quiero distinguir consumo normal, advertencia y exceso sin alterar los movimientos.
+| ID | Historia de usuario | Criterios de aceptación |
+| --- | --- | --- |
+| `HU-005-01` | Como titular autenticado, quiero crear y consultar presupuestos propios por categoría y mes para fijar límites de gasto sin duplicarlos. | `005/RF-1`, `005/RF-2` |
+| `HU-005-02` | Como titular autenticado, quiero ajustar el límite o eliminar un presupuesto propio para adaptar mi planificación sin modificar mis movimientos. | `005/RF-3` |
+| `HU-005-03` | Como titular autenticado, quiero conocer el consumo, restante y estado exacto de mis presupuestos para reconocer advertencias y excesos. | `005/RF-4`, `005/RF-5` |
+
+## Issues propuestas
+
+Propuestas documentales de seguimiento retrospectivo, sin creación en GitHub. El comportamiento descrito está implementado; su validación histórica BE-SPECS se conserva en esta spec y en la [matriz de cobertura](../../sdd/coverage.md). El estado de propuesta corresponde al seguimiento documental y no representa trabajo de implementación pendiente.
+
+Los criterios de aceptación de cada historia y propuesta son los RF referenciados, cuyo texto normativo se conserva en la sección siguiente.
+
+| ID local | Título propuesto | Historia relacionada | Criterios de aceptación |
+| --- | --- | --- | --- |
+| `ISSUE-005-01` | Creación y consulta de presupuestos | `HU-005-01` | `005/RF-1`, `005/RF-2` |
+| `ISSUE-005-02` | Actualización y eliminación de presupuestos | `HU-005-02` | `005/RF-3` |
+| `ISSUE-005-03` | Consumo y estados de presupuestos | `HU-005-03` | `005/RF-4`, `005/RF-5` |
 
 ## Requisitos funcionales y aceptación EARS
 

@@ -4,9 +4,25 @@
 
 Permitir al titular analizar un intervalo de días con ingresos, gastos, distribución y evolución de saldo sin mezclar actividad del periodo con saldo histórico acumulado.
 
-## Usuarios e historias
+## Historias de usuario
 
-Titular autenticado: quiero consultar un intervalo y conocer su resultado y mis saldos por mes, incluyendo meses sin actividad posteriores a su apertura.
+| ID | Historia de usuario | Criterios de aceptación |
+| --- | --- | --- |
+| `HU-007-01` | Como titular autenticado, quiero consultar ingresos, gastos y resultado de un intervalo válido para analizar mi actividad financiera con datos propios y coherentes. | `007/RF-1`, `007/RF-2`, `007/RF-5` |
+| `HU-007-02` | Como titular autenticado, quiero consultar la distribución de gastos del intervalo por categoría para identificar cómo se compone el gasto analizado. | `007/RF-1`, `007/RF-3`, `007/RF-5` |
+| `HU-007-03` | Como titular autenticado, quiero conocer la evolución mensual de mi saldo desde la apertura para revisar su trayectoria sin fabricar saldos anteriores ni proyectar futuros. | `007/RF-1`, `007/RF-4`, `007/RF-5` |
+
+## Issues propuestas
+
+Propuestas documentales de seguimiento retrospectivo, sin creación en GitHub. El comportamiento descrito está implementado; su validación histórica BE-SPECS se conserva en esta spec y en la [matriz de cobertura](../../sdd/coverage.md). El estado de propuesta corresponde al seguimiento documental y no representa trabajo de implementación pendiente.
+
+Los criterios de aceptación de cada historia y propuesta son los RF referenciados, cuyo texto normativo se conserva en la sección siguiente.
+
+| ID local | Título propuesto | Historia relacionada | Criterios de aceptación |
+| --- | --- | --- | --- |
+| `ISSUE-007-01` | Comparación financiera por intervalo | `HU-007-01` | `007/RF-1`, `007/RF-2`, `007/RF-5` |
+| `ISSUE-007-02` | Distribución de gastos del reporte | `HU-007-02` | `007/RF-1`, `007/RF-3`, `007/RF-5` |
+| `ISSUE-007-03` | Evolución histórica del saldo | `HU-007-03` | `007/RF-1`, `007/RF-4`, `007/RF-5` |
 
 ## Requisitos funcionales y aceptación EARS
 

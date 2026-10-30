@@ -4,9 +4,27 @@
 
 Permitir al titular crear y gestionar metas, registrar aportes/retiros y consultar su progreso sin confundir reservas con ingresos o gastos. Código validado: 4bea0d915c4197346cdba7b040016b23edb00752, 2026-10-30. Incluye la API autenticada de gestión y sus pruebas HTTP.
 
-## Usuarios e historias
+## Historias de usuario
 
-Titular autenticado: quiero fijar un objetivo y fecha, registrar avances, revisar metas activas o archivadas y conocer los fondos aún disponibles.
+| ID | Historia de usuario | Criterios de aceptación |
+| --- | --- | --- |
+| `HU-006-01` | Como titular autenticado, quiero crear, consultar, editar y archivar mis metas para mantener organizados mis objetivos de ahorro. | `006/RF-6`, `006/RF-7`, `006/RF-8` |
+| `HU-006-02` | Como titular autenticado, quiero registrar aportes y retiros de mis metas para reflejar mis avances preservando la integridad de su historial. | `006/RF-5`, `006/RF-9` |
+| `HU-006-03` | Como titular autenticado, quiero consultar el progreso y estado de mis metas visibles para saber cuánto falta y cuáles están completadas o vencidas. | `006/RF-1`, `006/RF-2`, `006/RF-3` |
+| `HU-006-04` | Como titular autenticado, quiero que las reservas y sus retiros se reflejen una sola vez en mi saldo para conocer mis fondos disponibles sin alterar ingresos ni gastos. | `006/RF-4`, `006/RF-5` |
+
+## Issues propuestas
+
+Propuestas documentales de seguimiento retrospectivo, sin creación en GitHub. El comportamiento descrito está implementado; su validación histórica BE-SPECS se conserva en esta spec y en la [matriz de cobertura](../../sdd/coverage.md). El estado de propuesta corresponde al seguimiento documental y no representa trabajo de implementación pendiente.
+
+Los criterios de aceptación de cada historia y propuesta son los RF referenciados, cuyo texto normativo se conserva en la sección siguiente.
+
+| ID local | Título propuesto | Historia relacionada | Criterios de aceptación |
+| --- | --- | --- | --- |
+| `ISSUE-006-01` | Gestión de metas de ahorro | `HU-006-01` | `006/RF-6`, `006/RF-7`, `006/RF-8` |
+| `ISSUE-006-02` | Aportes y retiros de ahorro | `HU-006-02` | `006/RF-5`, `006/RF-9` |
+| `ISSUE-006-03` | Indicadores y estados de metas | `HU-006-03` | `006/RF-1`, `006/RF-2`, `006/RF-3` |
+| `ISSUE-006-04` | Reservas de ahorro y saldo disponible | `HU-006-04` | `006/RF-4`, `006/RF-5` |
 
 ## Requisitos funcionales y aceptación EARS
 

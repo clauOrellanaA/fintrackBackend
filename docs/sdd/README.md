@@ -24,9 +24,17 @@ SDD-01 documentó los pasos 1–5 y SDD-02 planificó pendientes sin implementar
 
 ## Plantilla de spec
 
-Contexto y objetivo → usuarios → historias de usuario → RF numerados con aceptación EARS → requisitos no funcionales → casos límite → fuera de alcance → criterios de finalización → dudas y evidencia.
+Contexto y objetivo → historias de usuario identificadas, con rol, objetivo y beneficio → issues propuestas vinculadas → RF numerados con aceptación EARS → requisitos no funcionales → casos límite → fuera de alcance → criterios de finalización → dudas y evidencia.
 
 EARS: «CUANDO ocurre X, el sistema DEBE Y»; «SI ocurre un error X, el sistema DEBE Y»; «MIENTRAS se cumple X, el sistema DEBE Y». Mantener lenguaje observable y verificable. No incluir stack, módulos ni rutas en los RF; colocar referencias de archivos únicamente en Evidencia. Identificar requisitos globalmente como 004/RF-2 para no confundir RF locales.
+
+### Historias e issues propuestas
+
+Identificar cada historia localmente como `HU-004-01` y redactarla como «Como [rol], quiero [objetivo], para [beneficio]». Sus criterios de aceptación referencian los RF existentes de forma cualificada, por ejemplo `004/RF-2`; el texto normativo permanece en los RF.
+
+Documentar cada propuesta de issue con un ID local como `ISSUE-004-01`, título, historia relacionada y RF de aceptación. Mantener la relación **issue propuesta → historia de usuario → RF → matriz de cobertura** y conservar los identificadores al actualizar la documentación.
+
+Las propuestas de esta entrega son seguimiento retrospectivo de comportamiento implementado. Su estado documental se distingue del estado funcional y de la evidencia histórica BE-SPECS. La publicación en GitHub se registra únicamente cuando exista una issue real: mientras sean propuestas, conservarlas identificadas como tales, sin números ni enlaces ficticios ni nuevas tareas de reimplementación.
 
 ## Prompts reutilizables
 

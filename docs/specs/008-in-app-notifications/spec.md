@@ -4,9 +4,25 @@
 
 **IMPLEMENTADO Y VALIDADO LOCALMENTE.** Convertir los estados financieros disponibles en avisos consultables por su titular. Código 4bea0d915c4197346cdba7b040016b23edb00752; 2026-10-30. El usuario autorizó implementar el MVP en esta entrega.
 
-## Usuarios e historias
+## Historias de usuario
 
-Titular autenticado: quiero consultar los avisos de mis presupuestos y metas y saber cuántos hay, sin mezclar datos de otras personas ni recibir cifras inventadas.
+| ID | Historia de usuario | Criterios de aceptación |
+| --- | --- | --- |
+| `HU-008-01` | Como titular autenticado, quiero consultar avisos de advertencia o exceso de mis presupuestos del mes para reconocer su situación según el consumo exacto. | `008/RF-1`, `008/RF-2` |
+| `HU-008-02` | Como titular autenticado, quiero consultar avisos de mis metas completadas o vencidas para reconocer su situación actual. | `008/RF-1`, `008/RF-3` |
+| `HU-008-03` | Como titular autenticado, quiero consultar una lista ordenada y coherente de avisos actuales con su total para entender las condiciones de mis finanzas en cada consulta. | `008/RF-4`, `008/RF-5`, `008/RF-6` |
+
+## Issues propuestas
+
+Propuestas documentales de seguimiento retrospectivo, sin creación en GitHub. El comportamiento descrito está implementado; su validación histórica BE-SPECS se conserva en esta spec y en la [matriz de cobertura](../../sdd/coverage.md). El estado de propuesta corresponde al seguimiento documental y no representa trabajo de implementación pendiente.
+
+Los criterios de aceptación de cada historia y propuesta son los RF referenciados, cuyo texto normativo se conserva en la sección siguiente.
+
+| ID local | Título propuesto | Historia relacionada | Criterios de aceptación |
+| --- | --- | --- | --- |
+| `ISSUE-008-01` | Avisos de presupuestos | `HU-008-01` | `008/RF-1`, `008/RF-2` |
+| `ISSUE-008-02` | Avisos de metas | `HU-008-02` | `008/RF-1`, `008/RF-3` |
+| `ISSUE-008-03` | Contenido y coherencia de avisos actuales | `HU-008-03` | `008/RF-4`, `008/RF-5`, `008/RF-6` |
 
 ## Requisitos funcionales y aceptación EARS
 

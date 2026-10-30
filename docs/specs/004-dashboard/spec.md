@@ -4,9 +4,27 @@
 
 Ofrecer al titular una vista coherente de su saldo disponible, actividad mensual, distribución de gastos, presupuestos y metas para interpretar sus finanzas sin mezclar propietarios ni cortes temporales.
 
-## Usuarios e historias
+## Historias de usuario
 
-Titular autenticado: quiero elegir un mes y consultar indicadores coherentes, distinguiendo actividad de ese mes de saldo y ahorros acumulados.
+| ID | Historia de usuario | Criterios de aceptación |
+| --- | --- | --- |
+| `HU-004-01` | Como titular autenticado, quiero conocer mi saldo acumulado y sus reservas efectivas para identificar los fondos disponibles al instante de consulta. | `004/RF-2` |
+| `HU-004-02` | Como titular autenticado, quiero elegir un mes y consultar sus ingresos y gastos para distinguir la actividad del periodo de mi saldo acumulado. | `004/RF-1`, `004/RF-3` |
+| `HU-004-03` | Como titular autenticado, quiero ver mis gastos del mes agrupados por categoría para comprender cómo se distribuyen. | `004/RF-4` |
+| `HU-004-04` | Como titular autenticado, quiero consultar las cinco secciones coherentes del panel, incluidos presupuestos y metas, para evaluar mis finanzas con una misma versión de los datos. | `004/RF-5`, `004/RF-6` |
+
+## Issues propuestas
+
+Propuestas documentales de seguimiento retrospectivo, sin creación en GitHub. El comportamiento descrito está implementado; su validación histórica BE-SPECS se conserva en esta spec y en la [matriz de cobertura](../../sdd/coverage.md). El estado de propuesta corresponde al seguimiento documental y no representa trabajo de implementación pendiente.
+
+Los criterios de aceptación de cada historia y propuesta son los RF referenciados, cuyo texto normativo se conserva en la sección siguiente.
+
+| ID local | Título propuesto | Historia relacionada | Criterios de aceptación |
+| --- | --- | --- | --- |
+| `ISSUE-004-01` | Consulta del saldo disponible | `HU-004-01` | `004/RF-2` |
+| `ISSUE-004-02` | Periodo y resumen mensual | `HU-004-02` | `004/RF-1`, `004/RF-3` |
+| `ISSUE-004-03` | Distribución mensual de gastos | `HU-004-03` | `004/RF-4` |
+| `ISSUE-004-04` | Panel financiero completo y coherente | `HU-004-04` | `004/RF-5`, `004/RF-6` |
 
 ## Requisitos funcionales y aceptación EARS
 

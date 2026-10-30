@@ -1,0 +1,175 @@
+{
+  "info": {
+    "name": "FinTrack - 06 Reportes",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "FinTrack API v1. Selecciona el entorno Local o Render; baseUrl incluye /api/v1. Completa las credenciales en valores locales del entorno. Inicia sesión en Acceso y perfil para capturar accessToken. Los IDs se guardan al crear recursos. Esta plantilla portable procede de reports.v1.json. Las modificaciones en Postman no se sincronizan automáticamente con Git."
+  },
+  "item": [
+    {
+      "name": "Consultar reportes",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const required = [\"reportFrom\",\"reportTo\",\"accessToken\"];",
+              "const missing = required.filter(key => {const value = pm.variables.get(key); return typeof value !== 'string' || value.trim() === '' || value.includes('{{');});",
+              "if (missing.length) {console.error('Completa las variables locales del entorno: ' + missing.join(', ')); pm.execution.skipRequest();}"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Estado HTTP 200', function () {pm.response.to.have.status(200);});",
+              "pm.test('JSON válido', function () {pm.response.json();});",
+              "pm.test('Respuesta privada sin caché', function () {pm.response.to.have.header('Cache-Control', 'no-store');});"
+            ]
+          }
+        }
+      ],
+      "protocolProfileBehavior": {
+        "disableBodyPruning": true
+      },
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/reports?from={{reportFrom}}&to={{reportTo}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "reports"
+          ],
+          "query": [
+            {
+              "key": "from",
+              "value": "{{reportFrom}}",
+              "description": "Inclusive local start date.",
+              "disabled": false
+            },
+            {
+              "key": "to",
+              "value": "{{reportTo}}",
+              "description": "Inclusive local end date. The range has at most 24 calendar months.",
+              "disabled": false
+            }
+          ]
+        },
+        "description": "Returns one authenticated user's comparison, expense distribution, and monthly available-balance evolution. Both query parameters are required exactly once; unknown parameters, userId, and repeated parameters are rejected. The local dates are inclusive in America/La_Paz and are translated to [start, next-day-after-to). Responses are private and never cacheable.\n\nGET /reports. Completa las variables requeridas en el entorno seleccionado: reportFrom, reportTo, accessToken. Ejemplo preparado desde el contrato; no se ejecutó esta operación en Render durante la creación."
+      },
+      "response": [
+        {
+          "name": "200 - Ejemplo publicado: range",
+          "originalRequest": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reports?from={{reportFrom}}&to={{reportTo}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reports"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "{{reportFrom}}",
+                  "description": "Inclusive local start date.",
+                  "disabled": false
+                },
+                {
+                  "key": "to",
+                  "value": "{{reportTo}}",
+                  "description": "Inclusive local end date. The range has at most 24 calendar months.",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "Returns one authenticated user's comparison, expense distribution, and monthly available-balance evolution. Both query parameters are required exactly once; unknown parameters, userId, and repeated parameters are rejected. The local dates are inclusive in America/La_Paz and are translated to [start, next-day-after-to). Responses are private and never cacheable.\n\nGET /reports. Completa las variables requeridas en el entorno seleccionado: reportFrom, reportTo, accessToken. Ejemplo preparado desde el contrato; no se ejecutó esta operación en Render durante la creación."
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "key": "Cache-Control",
+              "value": "no-store"
+            }
+          ],
+          "cookie": [],
+          "body": "{\n  \"period\": {\n    \"from\": \"2026-01-01\",\n    \"to\": \"2026-03-31\",\n    \"timeZone\": \"America/La_Paz\",\n    \"start\": \"2026-01-01T04:00:00.000Z\",\n    \"endExclusive\": \"2026-04-01T04:00:00.000Z\"\n  },\n  \"currency\": \"BOB\",\n  \"asOf\": \"2026-10-20T12:00:00.000Z\",\n  \"comparison\": {\n    \"income\": \"1250.00\",\n    \"expense\": \"450.00\",\n    \"net\": \"800.00\"\n  },\n  \"expenseDistribution\": [\n    {\n      \"categoryId\": \"11111111-1111-4111-8111-111111111111\",\n      \"categoryName\": \"Alimentacion\",\n      \"amount\": \"300.00\",\n      \"percentage\": \"66.67\"\n    },\n    {\n      \"categoryId\": null,\n      \"categoryName\": \"Sin categoria\",\n      \"amount\": \"150.00\",\n      \"percentage\": \"33.33\"\n    }\n  ],\n  \"balanceEvolution\": [\n    {\n      \"month\": \"2026-01\",\n      \"amount\": \"1800.00\",\n      \"cutoff\": \"2026-02-01T04:00:00.000Z\"\n    },\n    {\n      \"month\": \"2026-02\",\n      \"amount\": \"2200.00\",\n      \"cutoff\": \"2026-03-01T04:00:00.000Z\"\n    },\n    {\n      \"month\": \"2026-03\",\n      \"amount\": \"2600.00\",\n      \"cutoff\": \"2026-04-01T04:00:00.000Z\"\n    }\n  ]\n}"
+        }
+      ]
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if (!pm.environment.get('baseUrl')) {",
+          "  console.error('Selecciona el entorno FinTrack - Local o FinTrack - Render.');",
+          "  pm.execution.skipRequest();",
+          "} else {",
+          "  const now = new Date();",
+          "  const parts = new Intl.DateTimeFormat('en-CA', {timeZone: 'America/La_Paz', year: 'numeric', month: '2-digit', day: '2-digit'}).formatToParts(now);",
+          "  const date = Object.fromEntries(parts.map(p => [p.type, p.value]));",
+          "  const month = date.year + '-' + date.month;",
+          "  const today = month + '-' + date.day;",
+          "  const defaults = {month: month, reportFrom: month + '-01', reportTo: today, transactionFrom: month + '-01T00:00:00-04:00', transactionTo: now.toISOString()};",
+          "  Object.keys(defaults).forEach(key => { if (!pm.variables.get(key)) pm.variables.set(key, defaults[key]); });",
+          "}"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000/api/v1"
+    },
+    {
+      "key": "reportFrom",
+      "value": ""
+    },
+    {
+      "key": "reportTo",
+      "value": ""
+    }
+  ]
+}

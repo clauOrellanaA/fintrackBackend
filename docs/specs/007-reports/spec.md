@@ -34,10 +34,16 @@ RF-1 a RF-5 trazados; tests de periodo, cifras, distribución, evolución, auten
 
 ## Dudas y evidencia
 
-Base actualizada: 59acca46ad7a0c43d5ac00bc5c548b6acc227109. RF-4 recoge la omisión preapertura implementada después del SDD inicial; no se identificó su prueba de regresión dedicada.
+Código validado: 4bea0d915c4197346cdba7b040016b23edb00752, 2026-10-30. La omisión preapertura y el corte mensual inclusivo tienen regresión dedicada; se conserva la implementación existente.
 
-[NO VERIFICADO] Prueba dedicada de escritura concurrente y fallo parcial dentro del reporte; la implementación comparte una transacción, pero la suite de reportes identificada no acredita todos esos escenarios.
+La suite ejecutó una escritura concurrente real entre fuentes y fallos globales de resumen, distribución y saldo, además de periodo, cifras, aislamiento y futuro.
 
 Fuentes: [controlador](../../../src/modules/reports/reports.controller.ts), [periodo](../../../src/modules/reports/report-period.ts), [servicio](../../../src/modules/reports/reports.service.ts), [contrato](../../openapi/reports.v1.json), [004](../004-dashboard/spec.md) y [cobertura](../../sdd/coverage.md).
 
-[Plan](plan.md) · [Tareas pendientes](tasks.md).
+[Plan](plan.md) · [Tareas y resultados](tasks.md).
+
+## Validación BE-SPECS
+
+Validación local independiente BE-SPECS, 2026-10-30: código/tests/OpenAPI 4bea0d915c4197346cdba7b040016b23edb00752; 82 pruebas aprobadas, 0 fallidas, 0 omitidas. Lint, tipos y build aprobados. [Entrega](../../be-specs-delivery.md) · [Matriz de 46 RF](../../sdd/coverage.md). No se acredita CI remota, merge ni despliegue.
+
+Los resultados acreditan los escenarios trazados, sin prometer cobertura exhaustiva de todas las combinaciones ni garantías adicionales fuera de los RF.

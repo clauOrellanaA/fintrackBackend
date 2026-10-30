@@ -2,7 +2,7 @@
 
 ## Contexto y objetivo
 
-**PLANIFICADO; NO IMPLEMENTADO.** Convertir los estados financieros disponibles en avisos consultables por su titular, para reconocer presupuestos próximos al límite o excedidos y situaciones de sus metas. Base: 59acca46ad7a0c43d5ac00bc5c548b6acc227109. Se conserva la estructura SDD existente.
+**IMPLEMENTADO Y VALIDADO LOCALMENTE.** Convertir los estados financieros disponibles en avisos consultables por su titular. Código 4bea0d915c4197346cdba7b040016b23edb00752; 2026-10-30. El usuario autorizó implementar el MVP en esta entrega.
 
 ## Usuarios e historias
 
@@ -33,8 +33,16 @@ Leído/no leído, historial, persistir avisos, recordatorios de proximidad, corr
 
 RF-1 a RF-6 implementados y trazados a pruebas ejecutadas: mapeo de estados, límites exactos, HTTP/contrato, aislamiento, consultas sin escrituras, coherencia y fallos globales. La presentación y el consumo de este contrato corresponden a la sesión de la interfaz.
 
-## Propuestas y evidencia
+## Alcance y evidencia
 
-**PROPUESTA de alcance MVP:** avisos de condiciones actuales al consultar; presupuestos del mes seleccionado; metas completed/overdue al instante actual. Los estados y umbrales provienen del código, pero esta política de avisos no está implementada ni acredita una aprobación histórica. No se inventan cruces de umbral, rearme, antigüedad, repetición de eventos o recordatorios.
+**MVP entregado:** avisos de condiciones actuales al consultar; presupuestos del mes seleccionado y metas completed/overdue al instante actual. La autorización actual no se presenta como aprobación histórica. No hay cruces de umbral almacenados, rearme, antigüedad, repetición de eventos ni recordatorios.
 
-Fuentes: [estados de presupuestos](../../../src/modules/budgets/budgets.service.ts), [estados y visibilidad de metas](../../../src/modules/savings-goals/savings-goals.service.ts), [plan propuesto](plan.md), [tareas](tasks.md), [cobertura](../../sdd/coverage.md).
+Fuentes: [estados de presupuestos](../../../src/modules/budgets/budgets.service.ts), [estados y visibilidad de metas](../../../src/modules/savings-goals/savings-goals.service.ts), [plan implementado](plan.md), [tareas](tasks.md), [cobertura](../../sdd/coverage.md).
+
+Implementación: [controlador](../../../src/modules/notifications/notifications.controller.ts), [composición](../../../src/modules/notifications/notifications.service.ts), [proyección](../../../src/modules/notifications/notification-projection.ts) y [OpenAPI](../../openapi/notifications.v1.json).
+
+## Validación BE-SPECS
+
+Validación local independiente BE-SPECS, 2026-10-30: código/tests/OpenAPI 4bea0d915c4197346cdba7b040016b23edb00752; 82 pruebas aprobadas, 0 fallidas, 0 omitidas. Lint, tipos y build aprobados. [Entrega](../../be-specs-delivery.md) · [Matriz de 46 RF](../../sdd/coverage.md). No se acredita CI remota, merge ni despliegue.
+
+Los resultados acreditan los escenarios trazados, sin prometer cobertura exhaustiva de todas las combinaciones ni garantías adicionales fuera de los RF.

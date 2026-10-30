@@ -37,3 +37,9 @@ RF-1 a RF-5 trazados y pruebas HTTP, unicidad, bordes 80/100, consistencia y ais
 No deducir envío de notificaciones a partir del estado de advertencia. El CRUD sí está integrado aunque documentos BE-05 históricos lo excluyan.
 
 Fuentes: [controlador](../../../src/modules/budgets/budgets.controller.ts), [servicio](../../../src/modules/budgets/budgets.service.ts), [contrato](../../openapi/budgets.v1.json) y [cobertura](../../sdd/coverage.md).
+
+## Validación BE-SPECS
+
+Validación local independiente BE-SPECS, 2026-10-30: código/tests/OpenAPI 4bea0d915c4197346cdba7b040016b23edb00752; 82 pruebas aprobadas, 0 fallidas, 0 omitidas. Lint, tipos y build aprobados. [Entrega](../../be-specs-delivery.md) · [Matriz de 46 RF](../../sdd/coverage.md). No se acredita CI remota, merge ni despliegue.
+
+Los resultados acreditan los escenarios trazados, sin prometer cobertura exhaustiva de todas las combinaciones ni garantías adicionales fuera de los RF.

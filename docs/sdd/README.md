@@ -1,6 +1,6 @@
 # SDD simple sobre software existente
 
-Línea base vigente: 59acca46ad7a0c43d5ac00bc5c548b6acc227109, inspeccionada el 2026-10-28. Primera captura histórica: bf57ebc. Alcance: backend. [Índice](../README.md) · [Constitución](../constitution.md) · [Plan](plan.md) · [Tareas](tasks.md) · [Cobertura](coverage.md).
+Código validado: 4bea0d915c4197346cdba7b040016b23edb00752, 2026-10-30. Base de feature 34d6b32; primera captura histórica bf57ebc. Alcance: backend. [Índice](../README.md) · [Constitución](../constitution.md) · [Plan](plan.md) · [Tareas](tasks.md) · [Cobertura](coverage.md).
 
 ## Regla práctica
 
@@ -20,7 +20,7 @@ Usar la implementación conectada a la aplicación para describir comportamiento
 | 6. Ejecutar si se pide | Una tarea autorizada | Cambio acotado, pruebas pertinentes y detención |
 | 7. Auditar | RF y pruebas ejecutadas | Cobertura, fallos, pendientes y veredicto explícito |
 
-SDD-01 documentó los pasos 1–5 y su cierre quedó histórico. SDD-02 actualiza lo observado y guarda los pendientes dentro de cada carpeta de spec mediante spec.md, plan.md y tasks.md, sin implementar. No ejecuta el paso 6 ni acredita el cumplimiento funcional del paso 7. El plan compartido describe la implementación actual; el plan 008 es una propuesta explícita. Ninguno ordena reimplementar capacidades existentes ni ejecutar tareas sin autorización.
+SDD-01 documentó los pasos 1–5 y SDD-02 planificó pendientes sin implementarlos; ambos se conservan como historia. La autorización posterior del usuario inició BE-SPECS: implementación de 008, correcciones de 003 y cobertura/ejecución de los ocho specs. [La entrega](../be-specs-delivery.md) y [la matriz](coverage.md) registran 82 aprobadas y el alcance de auditoría. Los documentos no autorizan nuevas tareas por sí solos.
 
 ## Plantilla de spec
 
@@ -44,16 +44,9 @@ EARS: «CUANDO ocurre X, el sistema DEBE Y»; «SI ocurre un error X, el sistema
 
 **Auditoría.** «Recorre todos los RF. Para cada uno indica test concreto, comando, resultado y alcance parcial o ausente. Comprueba finalización y da un veredicto. Un test identificado o un resultado antiguo no equivalen a ejecución actual».
 
-## Discrepancias documentales observadas
+## Conciliación documental actual
 
-| Fuente histórica | Diferencia comprobada en esta línea base |
-| --- | --- |
-| README del repositorio niega registro público | AuthController expone registro público y la suite HTTP lo ejercita; ver 001 |
-| architecture.md e integration.md describen BE-05 sin CRUD de presupuestos | BudgetsController y la prueba budget management ya incluyen CRUD; ver 005 |
-| integration.md deja CRUD y paginación de listas como futuros | TransactionsController/Service ya exponen operaciones y paginación; ver 003 |
-| architecture.md menciona notifications como dominio | No se identifica módulo/controlador de notificaciones implementado; se planifica en 008, todavía sin código |
-
-La API de metas y la omisión de meses preapertura en reportes, integradas después de la primera captura, están incorporadas en 006/007 y en la matriz. Se conservan los documentos históricos fuera de esta actualización para preservar su evidencia, no como inventario vigente. Para contratos vigentes consultar las specs, OpenAPI y la fuente de la línea base; no interpretar estas diferencias como solicitudes de cambio funcional.
+README, arquitectura e integración reflejan registro público, CRUD de presupuestos/metas, historial paginado, reportes y avisos. BE-01–BE-08 siguen como evidencias históricas, no como inventario vigente. BE-SPECS cerró las brechas de validación de metas y reportes y añadió 008; consultar código, OpenAPI y resultados del SHA registrado.
 
 ## Actualización posterior
 

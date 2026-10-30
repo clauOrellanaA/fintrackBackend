@@ -35,7 +35,9 @@ Los periodos mensuales utilizan la zona horaria `America/La_Paz`.
 
 ### 2.1. Autenticación y sesiones
 
+- Registro público con correo, nombre y contraseña.
 - Inicio de sesión mediante correo electrónico y contraseña.
+- Cambio de contraseña con revocación de todas las sesiones.
 - Protección de endpoints privados.
 - Identificación del usuario mediante el token de sesión.
 - Cierre de sesión con revocación del token.
@@ -44,7 +46,7 @@ Los periodos mensuales utilizan la zona horaria `America/La_Paz`.
 
 Las sesiones utilizan tokens bearer opacos, en lugar de depender de identificadores enviados directamente por el cliente.
 
-No existe un endpoint público de registro de usuarios.
+El registro público se expone mediante POST /api/v1/auth/register; crea finanzas vacías y devuelve una sesión. El perfil propio se consulta y edita en /api/v1/users/me.
 
 ### 2.2. Gestión de transacciones
 
@@ -93,16 +95,21 @@ El dashboard reúne cinco grupos de indicadores:
 4. Estado y consumo de presupuestos.
 5. Estado de las metas de ahorro.
 
-Las metas y reservas persistidas se consultan desde el dashboard, pero actualmente no cuentan con endpoints públicos de gestión.
+Las metas y reservas se consultan desde el dashboard y se gestionan mediante /api/v1/savings-goals y /api/v1/savings-goals/{id}/entries autenticadas.
 
 **Importante:** El saldo disponible puede reflejar movimientos acumulados. No todos los indicadores están restringidos al mes seleccionado.
 
-### 2.6. Funcionalidades fuera del alcance actual
+### 2.6. Metas, reportes y avisos
 
-- Registro público de usuarios.
+- Crear, listar, editar y archivar metas; registrar aportes/retiros sin borrar historial.
+- Consultar reportes por intervalo de días, con comparación, distribución y evolución del saldo.
+- Consultar avisos actuales de presupuestos y metas; sin historial ni contador de no leídos.
+
+### 2.7. Funcionalidades fuera del alcance actual
+
 - Integración automática con bancos.
-- Gestión pública de metas de ahorro.
-- Gestión pública de reservas.
+- Correo/SMS/push y entrega automática de avisos.
+- Historial de notificaciones y estados leído/no leído.
 
 ---
 
@@ -496,8 +503,17 @@ La API utiliza el prefijo:
 
 | Método | Endpoint | Descripción |
 |---|---|---|
+| POST | `/auth/register` | Crear cuenta y sesión |
 | POST | `/auth/login` | Iniciar sesión |
+| POST | `/auth/password` | Cambiar contraseña y revocar sesiones |
 | DELETE | `/auth/session` | Cerrar sesión y revocar token |
+
+### Perfil propio
+
+| Método | Endpoint | Descripción |
+|---|---|---|
+| GET | `/users/me` | Consultar perfil |
+| PATCH | `/users/me` | Editar perfil y apertura |
 
 ### Dashboard
 
@@ -540,6 +556,24 @@ GET /api/v1/dashboard?month=2026-10
 | POST | `/budgets` | Crear presupuesto |
 | PATCH | `/budgets/{id}` | Editar presupuesto |
 | DELETE | `/budgets/{id}` | Eliminar presupuesto |
+
+### Metas de ahorro
+
+| Método | Endpoint | Descripción |
+|---|---|---|
+| GET | `/savings-goals` | Listar propias, incluidas archivadas |
+| POST | `/savings-goals` | Crear meta |
+| PATCH | `/savings-goals/{id}` | Editar, archivar o desarchivar |
+| POST | `/savings-goals/{id}/entries` | Registrar aporte o retiro |
+
+### Reportes y avisos
+
+| Método | Endpoint | Descripción |
+|---|---|---|
+| GET | `/reports?from=YYYY-MM-DD&to=YYYY-MM-DD` | Reporte por días locales inclusivos |
+| GET | `/notifications?month=YYYY-MM` | Avisos actuales; mes opcional |
+
+[Contratos e índice de specs](docs/README.md) · [Entrega BE-SPECS](docs/be-specs-delivery.md).
 
 ---
 
@@ -593,7 +627,7 @@ fintrack_be01_test
 
 El rol utilizado debe disponer del privilegio PostgreSQL `CREATEDB`.
 
-Durante la ejecución, la suite crea sus propias bases temporales y las elimina al finalizar.
+Cada suite crea su base temporal. Las suites históricas la eliminan; el helper nuevo cierra conexiones y conserva las bases exclusivamente dentro de la instancia descartable hasta retirarla.
 
 **Advertencia:** No utilices una base de producción, una base de Render con datos importantes ni una instancia compartida que contenga información que necesites conservar.
 
@@ -624,8 +658,7 @@ npm run start:render
 
 Aplica las migraciones antes de iniciar la API, a diferencia del procedimiento local que ejecuta las migraciones como paso independiente.
 
-Para instrucciones completas de despliegue, migraciones y creación del primer usuario, consultar:
-
+Para instrucciones completas de despliegue, migraciones y creación del primer usuario, consultar [la guía de Render](docs/render-deployment.md).
 
 La configuración de producción no debe sobrescribirse con las credenciales generadas durante `npm run setup`.
 

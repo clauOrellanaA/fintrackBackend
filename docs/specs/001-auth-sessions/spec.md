@@ -30,10 +30,16 @@ Recuperación de contraseña, verificación de correo, MFA, proveedores externos
 
 ## Criterios de finalización
 
-RF-1 a RF-5 vinculados a pruebas identificadas; para declarar cumplimiento deben ejecutarse satisfactoriamente en una base aislada, incluidos rechazo de acceso y revocación. Esta entrega no ejecuta esas pruebas.
+RF-1 a RF-5 vinculados a pruebas identificadas; para declarar cumplimiento deben ejecutarse satisfactoriamente en una base aislada, incluidos rechazo de acceso y revocación. La auditoría BE-SPECS ejecutó esos escenarios; véase la evidencia actual.
 
 ## Dudas y evidencia
 
 No se requiere una decisión nueva para documentar los RF anteriores. Recuperación y MFA no se deducen como compromisos futuros.
 
-Fuentes: [controlador](../../../src/modules/auth/auth.controller.ts), [servicio](../../../src/modules/auth/auth.service.ts), [guard](../../../src/modules/auth/session.guard.ts), [contrato](../../openapi/users.v1.json) y [matriz de pruebas](../../sdd/coverage.md). El README histórico niega el registro público; la implementación sí lo expone.
+Fuentes: [controlador](../../../src/modules/auth/auth.controller.ts), [servicio](../../../src/modules/auth/auth.service.ts), [guard](../../../src/modules/auth/session.guard.ts), [contrato](../../openapi/users.v1.json) y [matriz de pruebas](../../sdd/coverage.md). El inventario vigente del README refleja el registro público implementado.
+
+## Validación BE-SPECS
+
+Validación local independiente BE-SPECS, 2026-10-30: código/tests/OpenAPI 4bea0d915c4197346cdba7b040016b23edb00752; 82 pruebas aprobadas, 0 fallidas, 0 omitidas. Lint, tipos y build aprobados. [Entrega](../../be-specs-delivery.md) · [Matriz de 46 RF](../../sdd/coverage.md). No se acredita CI remota, merge ni despliegue.
+
+Los resultados acreditan los escenarios trazados, sin prometer cobertura exhaustiva de todas las combinaciones ni garantías adicionales fuera de los RF.

@@ -2,7 +2,7 @@
 
 ## Contexto y objetivo
 
-Permitir al titular crear y gestionar metas, registrar aportes/retiros y consultar su progreso sin confundir reservas con ingresos o gastos. Línea base observada: 59acca46ad7a0c43d5ac00bc5c548b6acc227109, 2026-10-28. Esta revisión incorpora la API autenticada de gestión posterior al SDD inicial.
+Permitir al titular crear y gestionar metas, registrar aportes/retiros y consultar su progreso sin confundir reservas con ingresos o gastos. Código validado: 4bea0d915c4197346cdba7b040016b23edb00752, 2026-10-30. Incluye la API autenticada de gestión y sus pruebas HTTP.
 
 ## Usuarios e historias
 
@@ -30,16 +30,22 @@ Meta sin fecha o con fecha ya pasada; fecha objetivo hoy; creación/archivo exac
 
 ## Fuera de alcance
 
-Borrado destructivo de metas o entradas, edición del ledger, transferencias bancarias, reintento automático y avisos dentro de esta spec; estos últimos se planifican en 008.
+Borrado destructivo de metas o entradas, edición del ledger, transferencias bancarias, reintento automático y avisos dentro de esta spec; estos últimos se describen en 008.
 
 ## Criterios de finalización
 
-RF-1 a RF-9 trazados. Para declarar cumplimiento deben ejecutarse pruebas HTTP de gestión, contrato, ledger, reservas, concurrencia y aislamiento con PostgreSQL aislado. Los tests internos actuales no acreditan las nuevas rutas de gestión.
+RF-1 a RF-9 trazados. Para declarar cumplimiento deben ejecutarse pruebas HTTP de gestión, contrato, ledger, reservas, concurrencia y aislamiento con PostgreSQL aislado. La matriz diferencia las pruebas HTTP de gestión de las internas de ledger/reservas.
 
 ## Dudas y evidencia
 
-[NO VERIFICADO] Garantías concurrentes adicionales al cambiar apertura frente a entradas. No se identificaron tests dedicados de las cuatro operaciones HTTP de gestión ni carga de su OpenAPI en el validador actual; son brechas de validación, no motivo para reimplementar la API.
+Las cuatro operaciones de gestión y su OpenAPI tienen pruebas ejecutadas. Límite conservado: no se acreditan garantías concurrentes adicionales al cambiar apertura frente a entradas. 40001 conserva su traducción actual a 500 INTERNAL_ERROR, sin reintento automático.
 
-Fuentes: [controlador](../../../src/modules/savings-goals/savings-goals.controller.ts), [servicio](../../../src/modules/savings-goals/savings-goals.service.ts), [reservas](../../../src/modules/savings-goals/persisted-savings-reservation.reader.ts), [migración](../../../src/database/migrations/1792540800000-SavingsGoals.ts), [OpenAPI](../../openapi/savings-goals.v1.json), [cobertura](../../sdd/coverage.md) y [avisos propuestos](../008-in-app-notifications/spec.md).
+Fuentes: [controlador](../../../src/modules/savings-goals/savings-goals.controller.ts), [servicio](../../../src/modules/savings-goals/savings-goals.service.ts), [reservas](../../../src/modules/savings-goals/persisted-savings-reservation.reader.ts), [migración](../../../src/database/migrations/1792540800000-SavingsGoals.ts), [OpenAPI](../../openapi/savings-goals.v1.json), [cobertura](../../sdd/coverage.md) y [avisos internos](../008-in-app-notifications/spec.md).
 
-[Plan](plan.md) · [Tareas pendientes](tasks.md).
+[Plan](plan.md) · [Tareas y resultados](tasks.md).
+
+## Validación BE-SPECS
+
+Validación local independiente BE-SPECS, 2026-10-30: código/tests/OpenAPI 4bea0d915c4197346cdba7b040016b23edb00752; 82 pruebas aprobadas, 0 fallidas, 0 omitidas. Lint, tipos y build aprobados. [Entrega](../../be-specs-delivery.md) · [Matriz de 46 RF](../../sdd/coverage.md). No se acredita CI remota, merge ni despliegue.
+
+Los resultados acreditan los escenarios trazados, sin prometer cobertura exhaustiva de todas las combinaciones ni garantías adicionales fuera de los RF.

@@ -495,37 +495,42 @@ Las sesiones tienen una duración máxima documentada de ocho horas.
 
 ## 10. Endpoints disponibles
 
-La API utiliza el prefijo:
+Las rutas siguientes utilizan el prefijo `/api/v1` por defecto, configurable mediante `API_PREFIX` (`api/v1` en `.env.example`). Por ejemplo, `/health` corresponde a `/api/v1/health`.
 
-```text
-/api/v1
-```
+El catálogo contiene **28 operaciones: 4 públicas y 24 con sesión**. Las marcadas como **Bearer** requieren `Authorization: Bearer <accessToken>`, obtenido al registrar una cuenta o iniciar sesión.
+
+### Salud
+
+| Método | Endpoint | Acceso | Descripción |
+|---|---|---|---|
+| GET | `/health` | Público | Comprobar que el proceso responde; devuelve `200` |
+| GET | `/health/ready` | Público | Comprobar PostgreSQL; devuelve `200` si conecta o `503` si no está disponible |
+
+`/health` no comprueba la base de datos. `/health/ready` ejecuta una consulta de comprobación a PostgreSQL.
 
 ### Autenticación
 
-| Método | Endpoint | Descripción |
-|---|---|---|
-| POST | `/auth/register` | Crear cuenta y sesión |
-| POST | `/auth/login` | Iniciar sesión |
-| POST | `/auth/password` | Cambiar contraseña y revocar sesiones |
-| DELETE | `/auth/session` | Cerrar sesión y revocar token |
+| Método | Endpoint | Acceso | Descripción |
+|---|---|---|---|
+| POST | `/auth/register` | Público | Crear cuenta y sesión |
+| POST | `/auth/login` | Público | Iniciar sesión |
+| POST | `/auth/password` | Bearer | Cambiar contraseña y revocar todas las sesiones |
+| DELETE | `/auth/session` | Bearer | Cerrar sesión y revocar el token actual |
 
 ### Perfil propio
 
-| Método | Endpoint | Descripción |
-|---|---|---|
-| GET | `/users/me` | Consultar perfil |
-| PATCH | `/users/me` | Editar perfil y apertura |
+| Método | Endpoint | Acceso | Descripción |
+|---|---|---|---|
+| GET | `/users/me` | Bearer | Consultar perfil |
+| PATCH | `/users/me` | Bearer | Editar perfil y apertura |
 
 ### Dashboard
 
-| Método | Endpoint | Descripción |
-|---|---|---|
-| GET | `/dashboard` | Consultar indicadores financieros |
+| Método | Endpoint | Acceso | Descripción |
+|---|---|---|---|
+| GET | `/dashboard` | Bearer | Consultar indicadores financieros |
 
-El parámetro `month` permite solicitar información del periodo seleccionado.
-
-Ejemplo:
+El parámetro opcional `month` selecciona el periodo en formato `YYYY-MM`; al omitirlo se utiliza el mes actual en `America/La_Paz`.
 
 ```http
 GET /api/v1/dashboard?month=2026-10
@@ -533,47 +538,69 @@ GET /api/v1/dashboard?month=2026-10
 
 ### Transacciones
 
-| Método | Endpoint | Descripción |
-|---|---|---|
-| GET | `/transactions` | Listar movimientos |
-| POST | `/transactions` | Crear movimiento |
-| GET | `/transactions/{id}` | Consultar movimiento |
-| PATCH | `/transactions/{id}` | Editar movimiento |
-| DELETE | `/transactions/{id}` | Anular movimiento |
+| Método | Endpoint | Acceso | Descripción |
+|---|---|---|---|
+| GET | `/transactions` | Bearer | Listar movimientos |
+| POST | `/transactions` | Bearer | Crear movimiento |
+| GET | `/transactions/{id}` | Bearer | Consultar movimiento |
+| PATCH | `/transactions/{id}` | Bearer | Editar movimiento |
+| DELETE | `/transactions/{id}` | Bearer | Anular movimiento |
+
+El listado admite filtros opcionales `from`, `to`, `type`, `status`, `q`, `page` y `pageSize`. En transacciones, `from` y `to` son instantes ISO 8601 con zona horaria: inicio inclusivo y fin exclusivo.
 
 ### Categorías
 
-| Método | Endpoint | Descripción |
-|---|---|---|
-| GET | `/categories` | Listar categorías |
-| POST | `/categories` | Crear categoría |
-| PATCH | `/categories/{id}` | Editar categoría |
-| DELETE | `/categories/{id}` | Eliminar categoría |
+| Método | Endpoint | Acceso | Descripción |
+|---|---|---|---|
+| GET | `/categories` | Bearer | Listar categorías |
+| POST | `/categories` | Bearer | Crear categoría |
+| PATCH | `/categories/{id}` | Bearer | Editar categoría |
+| DELETE | `/categories/{id}` | Bearer | Eliminar categoría |
 
 ### Presupuestos
 
-| Método | Endpoint | Descripción |
-|---|---|---|
-| GET | `/budgets` | Listar presupuestos |
-| POST | `/budgets` | Crear presupuesto |
-| PATCH | `/budgets/{id}` | Editar presupuesto |
-| DELETE | `/budgets/{id}` | Eliminar presupuesto |
+| Método | Endpoint | Acceso | Descripción |
+|---|---|---|---|
+| GET | `/budgets` | Bearer | Listar presupuestos |
+| POST | `/budgets` | Bearer | Crear presupuesto |
+| PATCH | `/budgets/{id}` | Bearer | Editar presupuesto |
+| DELETE | `/budgets/{id}` | Bearer | Eliminar presupuesto |
+
+El listado admite `month` opcional en formato `YYYY-MM`; por defecto utiliza el mes actual en `America/La_Paz`.
 
 ### Metas de ahorro
 
-| Método | Endpoint | Descripción |
-|---|---|---|
-| GET | `/savings-goals` | Listar propias, incluidas archivadas |
-| POST | `/savings-goals` | Crear meta |
-| PATCH | `/savings-goals/{id}` | Editar, archivar o desarchivar |
-| POST | `/savings-goals/{id}/entries` | Registrar aporte o retiro |
+| Método | Endpoint | Acceso | Descripción |
+|---|---|---|---|
+| GET | `/savings-goals` | Bearer | Listar propias, incluidas archivadas |
+| POST | `/savings-goals` | Bearer | Crear meta |
+| PATCH | `/savings-goals/{id}` | Bearer | Editar, archivar o desarchivar |
+| POST | `/savings-goals/{id}/entries` | Bearer | Registrar aporte o retiro |
 
 ### Reportes y avisos
 
-| Método | Endpoint | Descripción |
-|---|---|---|
-| GET | `/reports?from=YYYY-MM-DD&to=YYYY-MM-DD` | Reporte por días locales inclusivos |
-| GET | `/notifications?month=YYYY-MM` | Avisos actuales; mes opcional |
+| Método | Endpoint | Acceso | Descripción |
+|---|---|---|---|
+| GET | `/reports` | Bearer | Consultar reporte por rango de fechas |
+| GET | `/notifications` | Bearer | Consultar avisos actuales del periodo |
+
+En reportes, `from` y `to` son obligatorios y usan fechas locales `YYYY-MM-DD`, ambas inclusivas, en `America/La_Paz`. El rango debe estar ordenado y abarcar como máximo 24 meses calendario, contando los meses de ambos extremos. Por ejemplo: `/api/v1/reports?from=2026-10-01&to=2026-10-31`.
+
+En avisos, `month` es opcional y usa `YYYY-MM`; al omitirlo se utiliza el mes actual en `America/La_Paz`. Por ejemplo: `/api/v1/notifications?month=2026-10`.
+
+### Contratos y ejemplos
+
+Los contratos OpenAPI detallan parámetros, cuerpos de solicitud, respuestas y errores por recurso:
+
+- [Autenticación y perfil](docs/openapi/users.v1.json).
+- [Dashboard](docs/openapi/dashboard.v1.json).
+- [Transacciones y categorías](docs/openapi/transactions.v1.json).
+- [Presupuestos](docs/openapi/budgets.v1.json).
+- [Metas de ahorro](docs/openapi/savings-goals.v1.json).
+- [Reportes](docs/openapi/reports.v1.json).
+- [Avisos](docs/openapi/notifications.v1.json).
+
+Para importar y ejecutar solicitudes, consultar la [guía de Postman](postman/README.md).
 
 [Contratos e índice de specs](docs/README.md) · [Entrega BE-SPECS](docs/be-specs-delivery.md).
 

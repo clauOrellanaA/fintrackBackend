@@ -1,0 +1,384 @@
+{
+  "info": {
+    "name": "FinTrack - 03 Dashboard",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "FinTrack API v1. Selecciona el entorno Local o Render; baseUrl incluye /api/v1. Completa las credenciales en valores locales del entorno. Inicia sesión en Acceso y perfil para capturar accessToken. Los IDs se guardan al crear recursos. Esta plantilla portable procede de dashboard.v1.json. Las modificaciones en Postman no se sincronizan automáticamente con Git."
+  },
+  "item": [
+    {
+      "name": "Consultar dashboard",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const required = [\"accessToken\"];",
+              "const missing = required.filter(key => {const value = pm.variables.get(key); return typeof value !== 'string' || value.trim() === '' || value.includes('{{');});",
+              "if (missing.length) {console.error('Completa las variables locales del entorno: ' + missing.join(', ')); pm.execution.skipRequest();}"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Estado HTTP 200', function () {pm.response.to.have.status(200);});",
+              "pm.test('JSON válido', function () {pm.response.json();});",
+              "pm.test('Respuesta privada sin caché', function () {pm.response.to.have.header('Cache-Control', 'no-store');});"
+            ]
+          }
+        }
+      ],
+      "protocolProfileBehavior": {
+        "disableBodyPruning": true
+      },
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/dashboard",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "dashboard"
+          ],
+          "query": [
+            {
+              "key": "month",
+              "value": "{{month}}",
+              "description": "1900-01 through 9998-12; default current product month.",
+              "disabled": true
+            }
+          ]
+        },
+        "description": "Reject unknown or repeated query parameters. Identity comes exclusively from bearer session. No partial responses.\n\nGET /dashboard. Completa las variables requeridas en el entorno seleccionado: accessToken. Ejemplo preparado desde el contrato; no se ejecutó esta operación en Render durante la creación."
+      },
+      "response": [
+        {
+          "name": "200 - Ejemplo publicado: be06",
+          "originalRequest": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/dashboard",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "dashboard"
+              ],
+              "query": [
+                {
+                  "key": "month",
+                  "value": "{{month}}",
+                  "description": "1900-01 through 9998-12; default current product month.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Reject unknown or repeated query parameters. Identity comes exclusively from bearer session. No partial responses.\n\nGET /dashboard. Completa las variables requeridas en el entorno seleccionado: accessToken. Ejemplo preparado desde el contrato; no se ejecutó esta operación en Render durante la creación."
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "key": "Cache-Control",
+              "value": "no-store"
+            }
+          ],
+          "cookie": [],
+          "body": "{\n  \"period\": {\n    \"month\": \"2026-02\",\n    \"timeZone\": \"America/La_Paz\",\n    \"start\": \"2026-02-01T04:00:00.000Z\",\n    \"endExclusive\": \"2026-03-01T04:00:00.000Z\"\n  },\n  \"currency\": \"BOB\",\n  \"asOf\": \"2026-10-19T12:00:00.000Z\",\n  \"sections\": {\n    \"balance\": {\n      \"status\": \"ready\",\n      \"data\": {\n        \"amount\": \"2200.05\",\n        \"cutoff\": \"2026-10-19T12:00:00.000Z\"\n      }\n    },\n    \"monthlySummary\": {\n      \"status\": \"ready\",\n      \"data\": {\n        \"income\": \"280.01\",\n        \"expense\": \"280.01\"\n      }\n    },\n    \"expenseDistribution\": {\n      \"status\": \"ready\",\n      \"data\": [\n        {\n          \"categoryId\": \"33333333-3333-4333-8333-333333333333\",\n          \"categoryName\": \"Demo presupuesto excedido\",\n          \"amount\": \"100.01\",\n          \"percentage\": \"35.72\"\n        },\n        {\n          \"categoryId\": \"22222222-2222-4222-8222-222222222222\",\n          \"categoryName\": \"Demo presupuesto 100%\",\n          \"amount\": \"100.00\",\n          \"percentage\": \"35.71\"\n        },\n        {\n          \"categoryId\": \"11111111-1111-4111-8111-111111111111\",\n          \"categoryName\": \"Demo presupuesto 80%\",\n          \"amount\": \"80.00\",\n          \"percentage\": \"28.57\"\n        }\n      ]\n    },\n    \"budgets\": {\n      \"status\": \"ready\",\n      \"data\": [\n        {\n          \"id\": \"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa\",\n          \"categoryId\": \"11111111-1111-4111-8111-111111111111\",\n          \"categoryName\": \"Demo presupuesto 80%\",\n          \"limit\": \"100.00\",\n          \"spent\": \"80.00\",\n          \"remaining\": \"20.00\",\n          \"progress\": \"80.00\",\n          \"state\": \"warning\"\n        },\n        {\n          \"id\": \"bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb\",\n          \"categoryId\": \"22222222-2222-4222-8222-222222222222\",\n          \"categoryName\": \"Demo presupuesto 100%\",\n          \"limit\": \"100.00\",\n          \"spent\": \"100.00\",\n          \"remaining\": \"0.00\",\n          \"progress\": \"100.00\",\n          \"state\": \"warning\"\n        },\n        {\n          \"id\": \"cccccccc-cccc-4ccc-8ccc-cccccccccccc\",\n          \"categoryId\": \"33333333-3333-4333-8333-333333333333\",\n          \"categoryName\": \"Demo presupuesto excedido\",\n          \"limit\": \"100.00\",\n          \"spent\": \"100.01\",\n          \"remaining\": \"-0.01\",\n          \"progress\": \"100.01\",\n          \"state\": \"exceeded\"\n        }\n      ]\n    },\n    \"savingsGoals\": {\n      \"status\": \"ready\",\n      \"data\": [\n        {\n          \"id\": \"00000000-0000-4000-8000-000000000001\",\n          \"name\": \"Demo sin aportes\",\n          \"target\": \"100.00\",\n          \"saved\": \"0.00\",\n          \"remaining\": \"100.00\",\n          \"progress\": \"0.00\",\n          \"state\": \"active\",\n          \"targetDate\": null\n        },\n        {\n          \"id\": \"00000000-0000-4000-8000-000000000002\",\n          \"name\": \"Demo parcial\",\n          \"target\": \"100.00\",\n          \"saved\": \"30.00\",\n          \"remaining\": \"70.00\",\n          \"progress\": \"30.00\",\n          \"state\": \"active\",\n          \"targetDate\": \"2099-12-31\"\n        },\n        {\n          \"id\": \"00000000-0000-4000-8000-000000000003\",\n          \"name\": \"Demo completada\",\n          \"target\": \"100.00\",\n          \"saved\": \"100.00\",\n          \"remaining\": \"0.00\",\n          \"progress\": \"100.00\",\n          \"state\": \"completed\",\n          \"targetDate\": \"2026-01-31\"\n        },\n        {\n          \"id\": \"00000000-0000-4000-8000-000000000004\",\n          \"name\": \"Demo excedida\",\n          \"target\": \"100.00\",\n          \"saved\": \"110.00\",\n          \"remaining\": \"0.00\",\n          \"progress\": \"110.00\",\n          \"state\": \"completed\",\n          \"targetDate\": null\n        },\n        {\n          \"id\": \"00000000-0000-4000-8000-000000000005\",\n          \"name\": \"Demo vencida\",\n          \"target\": \"100.00\",\n          \"saved\": \"20.00\",\n          \"remaining\": \"80.00\",\n          \"progress\": \"20.00\",\n          \"state\": \"overdue\",\n          \"targetDate\": \"2026-01-31\"\n        }\n      ]\n    }\n  }\n}"
+        },
+        {
+          "name": "200 - Ejemplo publicado: be05",
+          "originalRequest": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/dashboard",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "dashboard"
+              ],
+              "query": [
+                {
+                  "key": "month",
+                  "value": "{{month}}",
+                  "description": "1900-01 through 9998-12; default current product month.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Reject unknown or repeated query parameters. Identity comes exclusively from bearer session. No partial responses.\n\nGET /dashboard. Completa las variables requeridas en el entorno seleccionado: accessToken. Ejemplo preparado desde el contrato; no se ejecutó esta operación en Render durante la creación."
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "key": "Cache-Control",
+              "value": "no-store"
+            }
+          ],
+          "cookie": [],
+          "body": "{\n  \"period\": {\n    \"month\": \"2026-02\",\n    \"timeZone\": \"America/La_Paz\",\n    \"start\": \"2026-02-01T04:00:00.000Z\",\n    \"endExclusive\": \"2026-03-01T04:00:00.000Z\"\n  },\n  \"currency\": \"BOB\",\n  \"asOf\": \"2026-10-19T12:00:00.000Z\",\n  \"sections\": {\n    \"balance\": {\n      \"status\": \"ready\",\n      \"data\": {\n        \"amount\": \"2500.05\",\n        \"cutoff\": \"2026-10-19T12:00:00.000Z\"\n      }\n    },\n    \"monthlySummary\": {\n      \"status\": \"ready\",\n      \"data\": {\n        \"income\": \"280.01\",\n        \"expense\": \"280.01\"\n      }\n    },\n    \"expenseDistribution\": {\n      \"status\": \"ready\",\n      \"data\": [\n        {\n          \"categoryId\": \"33333333-3333-4333-8333-333333333333\",\n          \"categoryName\": \"Demo presupuesto excedido\",\n          \"amount\": \"100.01\",\n          \"percentage\": \"35.72\"\n        },\n        {\n          \"categoryId\": \"22222222-2222-4222-8222-222222222222\",\n          \"categoryName\": \"Demo presupuesto 100%\",\n          \"amount\": \"100.00\",\n          \"percentage\": \"35.71\"\n        },\n        {\n          \"categoryId\": \"11111111-1111-4111-8111-111111111111\",\n          \"categoryName\": \"Demo presupuesto 80%\",\n          \"amount\": \"80.00\",\n          \"percentage\": \"28.57\"\n        }\n      ]\n    },\n    \"budgets\": {\n      \"status\": \"ready\",\n      \"data\": [\n        {\n          \"id\": \"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa\",\n          \"categoryId\": \"11111111-1111-4111-8111-111111111111\",\n          \"categoryName\": \"Demo presupuesto 80%\",\n          \"limit\": \"100.00\",\n          \"spent\": \"80.00\",\n          \"remaining\": \"20.00\",\n          \"progress\": \"80.00\",\n          \"state\": \"warning\"\n        },\n        {\n          \"id\": \"bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb\",\n          \"categoryId\": \"22222222-2222-4222-8222-222222222222\",\n          \"categoryName\": \"Demo presupuesto 100%\",\n          \"limit\": \"100.00\",\n          \"spent\": \"100.00\",\n          \"remaining\": \"0.00\",\n          \"progress\": \"100.00\",\n          \"state\": \"warning\"\n        },\n        {\n          \"id\": \"cccccccc-cccc-4ccc-8ccc-cccccccccccc\",\n          \"categoryId\": \"33333333-3333-4333-8333-333333333333\",\n          \"categoryName\": \"Demo presupuesto excedido\",\n          \"limit\": \"100.00\",\n          \"spent\": \"100.01\",\n          \"remaining\": \"-0.01\",\n          \"progress\": \"100.01\",\n          \"state\": \"exceeded\"\n        }\n      ]\n    },\n    \"savingsGoals\": {\n      \"status\": \"notAvailable\"\n    }\n  }\n}"
+        },
+        {
+          "name": "200 - Ejemplo publicado: be04",
+          "originalRequest": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/dashboard",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "dashboard"
+              ],
+              "query": [
+                {
+                  "key": "month",
+                  "value": "{{month}}",
+                  "description": "1900-01 through 9998-12; default current product month.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Reject unknown or repeated query parameters. Identity comes exclusively from bearer session. No partial responses.\n\nGET /dashboard. Completa las variables requeridas en el entorno seleccionado: accessToken. Ejemplo preparado desde el contrato; no se ejecutó esta operación en Render durante la creación."
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "key": "Cache-Control",
+              "value": "no-store"
+            }
+          ],
+          "cookie": [],
+          "body": "{\n  \"period\": {\n    \"month\": \"2026-10\",\n    \"timeZone\": \"America/La_Paz\",\n    \"start\": \"2026-10-01T04:00:00.000Z\",\n    \"endExclusive\": \"2026-11-01T04:00:00.000Z\"\n  },\n  \"currency\": \"BOB\",\n  \"asOf\": \"2026-10-19T12:00:00.000Z\",\n  \"sections\": {\n    \"balance\": {\n      \"status\": \"ready\",\n      \"data\": {\n        \"amount\": \"2500.05\",\n        \"cutoff\": \"2026-10-19T12:00:00.000Z\"\n      }\n    },\n    \"monthlySummary\": {\n      \"status\": \"ready\",\n      \"data\": {\n        \"income\": \"0.00\",\n        \"expense\": \"500.05\"\n      }\n    },\n    \"expenseDistribution\": {\n      \"status\": \"ready\",\n      \"data\": [\n        {\n          \"categoryId\": \"11111111-1111-4111-8111-111111111111\",\n          \"categoryName\": \"Alimentacion\",\n          \"amount\": \"500.05\",\n          \"percentage\": \"100.00\"\n        }\n      ]\n    },\n    \"budgets\": {\n      \"status\": \"notAvailable\"\n    },\n    \"savingsGoals\": {\n      \"status\": \"notAvailable\"\n    }\n  }\n}"
+        },
+        {
+          "name": "200 - Ejemplo publicado: be03",
+          "originalRequest": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/dashboard",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "dashboard"
+              ],
+              "query": [
+                {
+                  "key": "month",
+                  "value": "{{month}}",
+                  "description": "1900-01 through 9998-12; default current product month.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Reject unknown or repeated query parameters. Identity comes exclusively from bearer session. No partial responses.\n\nGET /dashboard. Completa las variables requeridas en el entorno seleccionado: accessToken. Ejemplo preparado desde el contrato; no se ejecutó esta operación en Render durante la creación."
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "key": "Cache-Control",
+              "value": "no-store"
+            }
+          ],
+          "cookie": [],
+          "body": "{\n  \"period\": {\n    \"month\": \"2026-10\",\n    \"timeZone\": \"America/La_Paz\",\n    \"start\": \"2026-10-01T04:00:00.000Z\",\n    \"endExclusive\": \"2026-11-01T04:00:00.000Z\"\n  },\n  \"currency\": \"BOB\",\n  \"asOf\": \"2026-10-19T12:00:00.000Z\",\n  \"sections\": {\n    \"balance\": {\n      \"status\": \"ready\",\n      \"data\": {\n        \"amount\": \"2500.05\",\n        \"cutoff\": \"2026-10-19T12:00:00.000Z\"\n      }\n    },\n    \"monthlySummary\": {\n      \"status\": \"ready\",\n      \"data\": {\n        \"income\": \"0.00\",\n        \"expense\": \"500.05\"\n      }\n    },\n    \"expenseDistribution\": {\n      \"status\": \"notAvailable\"\n    },\n    \"budgets\": {\n      \"status\": \"notAvailable\"\n    },\n    \"savingsGoals\": {\n      \"status\": \"notAvailable\"\n    }\n  }\n}"
+        },
+        {
+          "name": "200 - Ejemplo publicado: be02",
+          "originalRequest": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/dashboard",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "dashboard"
+              ],
+              "query": [
+                {
+                  "key": "month",
+                  "value": "{{month}}",
+                  "description": "1900-01 through 9998-12; default current product month.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Reject unknown or repeated query parameters. Identity comes exclusively from bearer session. No partial responses.\n\nGET /dashboard. Completa las variables requeridas en el entorno seleccionado: accessToken. Ejemplo preparado desde el contrato; no se ejecutó esta operación en Render durante la creación."
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "key": "Cache-Control",
+              "value": "no-store"
+            }
+          ],
+          "cookie": [],
+          "body": "{\n  \"period\": {\n    \"month\": \"2026-10\",\n    \"timeZone\": \"America/La_Paz\",\n    \"start\": \"2026-10-01T04:00:00.000Z\",\n    \"endExclusive\": \"2026-11-01T04:00:00.000Z\"\n  },\n  \"currency\": \"BOB\",\n  \"asOf\": \"2026-10-19T12:00:00.000Z\",\n  \"sections\": {\n    \"balance\": {\n      \"status\": \"ready\",\n      \"data\": {\n        \"amount\": \"2500.05\",\n        \"cutoff\": \"2026-10-19T12:00:00.000Z\"\n      }\n    },\n    \"monthlySummary\": {\n      \"status\": \"notAvailable\"\n    },\n    \"expenseDistribution\": {\n      \"status\": \"notAvailable\"\n    },\n    \"budgets\": {\n      \"status\": \"notAvailable\"\n    },\n    \"savingsGoals\": {\n      \"status\": \"notAvailable\"\n    }\n  }\n}"
+        },
+        {
+          "name": "200 - Ejemplo publicado: be01",
+          "originalRequest": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/dashboard",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "dashboard"
+              ],
+              "query": [
+                {
+                  "key": "month",
+                  "value": "{{month}}",
+                  "description": "1900-01 through 9998-12; default current product month.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Reject unknown or repeated query parameters. Identity comes exclusively from bearer session. No partial responses.\n\nGET /dashboard. Completa las variables requeridas en el entorno seleccionado: accessToken. Ejemplo preparado desde el contrato; no se ejecutó esta operación en Render durante la creación."
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "key": "Cache-Control",
+              "value": "no-store"
+            }
+          ],
+          "cookie": [],
+          "body": "{\n  \"period\": {\n    \"month\": \"2026-10\",\n    \"timeZone\": \"America/La_Paz\",\n    \"start\": \"2026-10-01T04:00:00.000Z\",\n    \"endExclusive\": \"2026-11-01T04:00:00.000Z\"\n  },\n  \"currency\": \"BOB\",\n  \"asOf\": \"2026-10-18T12:00:00.000Z\",\n  \"sections\": {\n    \"balance\": {\n      \"status\": \"notAvailable\"\n    },\n    \"monthlySummary\": {\n      \"status\": \"notAvailable\"\n    },\n    \"expenseDistribution\": {\n      \"status\": \"notAvailable\"\n    },\n    \"budgets\": {\n      \"status\": \"notAvailable\"\n    },\n    \"savingsGoals\": {\n      \"status\": \"notAvailable\"\n    }\n  }\n}"
+        }
+      ]
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if (!pm.environment.get('baseUrl')) {",
+          "  console.error('Selecciona el entorno FinTrack - Local o FinTrack - Render.');",
+          "  pm.execution.skipRequest();",
+          "} else {",
+          "  const now = new Date();",
+          "  const parts = new Intl.DateTimeFormat('en-CA', {timeZone: 'America/La_Paz', year: 'numeric', month: '2-digit', day: '2-digit'}).formatToParts(now);",
+          "  const date = Object.fromEntries(parts.map(p => [p.type, p.value]));",
+          "  const month = date.year + '-' + date.month;",
+          "  const today = month + '-' + date.day;",
+          "  const defaults = {month: month, reportFrom: month + '-01', reportTo: today, transactionFrom: month + '-01T00:00:00-04:00', transactionTo: now.toISOString()};",
+          "  Object.keys(defaults).forEach(key => { if (!pm.variables.get(key)) pm.variables.set(key, defaults[key]); });",
+          "}"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000/api/v1"
+    },
+    {
+      "key": "month",
+      "value": ""
+    }
+  ]
+}

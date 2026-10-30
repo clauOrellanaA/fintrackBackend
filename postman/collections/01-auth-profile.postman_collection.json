@@ -1,0 +1,507 @@
+{
+  "info": {
+    "name": "FinTrack - 01 Acceso y perfil",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "FinTrack API v1. Selecciona el entorno Local o Render; baseUrl incluye /api/v1. Completa las credenciales en valores locales del entorno. Inicia sesión en Acceso y perfil para capturar accessToken. Los IDs se guardan al crear recursos. Esta plantilla portable procede de users.v1.json. Las modificaciones en Postman no se sincronizan automáticamente con Git."
+  },
+  "item": [
+    {
+      "name": "01 Acceso",
+      "item": [
+        {
+          "name": "Iniciar sesión",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const required = [\"email\",\"password\"];",
+                  "const missing = required.filter(key => {const value = pm.variables.get(key); return typeof value !== 'string' || value.trim() === '' || value.includes('{{');});",
+                  "if (missing.length) {console.error('Completa las variables locales del entorno: ' + missing.join(', ')); pm.execution.skipRequest();}",
+                  "else {pm.environment.unset('accessToken'); pm.environment.unset('tokenExpiresAt');}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Estado HTTP 200', function () {pm.response.to.have.status(200);});",
+                  "pm.test('JSON válido', function () {pm.response.json();});",
+                  "pm.test('Respuesta privada sin caché', function () {pm.response.to.have.header('Cache-Control', 'no-store');});",
+                  "if (pm.response.code === 200) {const body = pm.response.json(); pm.test('Token de sesión emitido', function () {pm.expect(body.accessToken).to.be.a('string').and.not.empty;}); if (body.accessToken) {pm.environment.set('accessToken', body.accessToken); pm.environment.set('tokenExpiresAt', body.expiresAt);}}"
+                ]
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "\n\nPOST /auth/login. Completa las variables requeridas en el entorno seleccionado: email, password. Ejemplo preparado desde el contrato; no se ejecutó esta operación en Render durante la creación."
+          },
+          "response": []
+        },
+        {
+          "name": "Registrar cuenta nueva",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const required = [\"email\",\"password\",\"displayName\"];",
+                  "const missing = required.filter(key => {const value = pm.variables.get(key); return typeof value !== 'string' || value.trim() === '' || value.includes('{{');});",
+                  "if (missing.length) {console.error('Completa las variables locales del entorno: ' + missing.join(', ')); pm.execution.skipRequest();}",
+                  "else {pm.environment.unset('accessToken'); pm.environment.unset('tokenExpiresAt');}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Estado HTTP 201', function () {pm.response.to.have.status(201);});",
+                  "pm.test('JSON válido', function () {pm.response.json();});",
+                  "pm.test('Respuesta privada sin caché', function () {pm.response.to.have.header('Cache-Control', 'no-store');});",
+                  "if (pm.response.code === 201) {const body = pm.response.json(); pm.test('Token de sesión emitido', function () {pm.expect(body.accessToken).to.be.a('string').and.not.empty;}); if (body.accessToken) {pm.environment.set('accessToken', body.accessToken); pm.environment.set('tokenExpiresAt', body.expiresAt);}}"
+                ]
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\",\n  \"displayName\": \"{{displayName}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "description": "\n\nPOST /auth/register. Completa las variables requeridas en el entorno seleccionado: email, password, displayName. Ejemplo preparado desde el contrato; no se ejecutó esta operación en Render durante la creación."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "02 Perfil",
+      "item": [
+        {
+          "name": "Consultar perfil",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const required = [\"accessToken\"];",
+                  "const missing = required.filter(key => {const value = pm.variables.get(key); return typeof value !== 'string' || value.trim() === '' || value.includes('{{');});",
+                  "if (missing.length) {console.error('Completa las variables locales del entorno: ' + missing.join(', ')); pm.execution.skipRequest();}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Estado HTTP 200', function () {pm.response.to.have.status(200);});",
+                  "pm.test('JSON válido', function () {pm.response.json();});",
+                  "pm.test('Respuesta privada sin caché', function () {pm.response.to.have.header('Cache-Control', 'no-store');});"
+                ]
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "me"
+              ]
+            },
+            "description": "\n\nGET /users/me. Completa las variables requeridas en el entorno seleccionado: accessToken. Ejemplo preparado desde el contrato; no se ejecutó esta operación en Render durante la creación."
+          },
+          "response": []
+        },
+        {
+          "name": "Actualizar perfil",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const required = [\"displayName\",\"accessToken\"];",
+                  "const missing = required.filter(key => {const value = pm.variables.get(key); return typeof value !== 'string' || value.trim() === '' || value.includes('{{');});",
+                  "if (missing.length) {console.error('Completa las variables locales del entorno: ' + missing.join(', ')); pm.execution.skipRequest();}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Estado HTTP 200', function () {pm.response.to.have.status(200);});",
+                  "pm.test('JSON válido', function () {pm.response.json();});",
+                  "pm.test('Respuesta privada sin caché', function () {pm.response.to.have.header('Cache-Control', 'no-store');});"
+                ]
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"displayName\": \"{{displayName}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "me"
+              ]
+            },
+            "description": "\n\nPATCH /users/me. Completa las variables requeridas en el entorno seleccionado: displayName, accessToken. Ejemplo preparado desde el contrato; no se ejecutó esta operación en Render durante la creación."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "03 Seguridad",
+      "item": [
+        {
+          "name": "Cambiar contraseña",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const required = [\"password\",\"newPassword\",\"accessToken\"];",
+                  "const missing = required.filter(key => {const value = pm.variables.get(key); return typeof value !== 'string' || value.trim() === '' || value.includes('{{');});",
+                  "if (missing.length) {console.error('Completa las variables locales del entorno: ' + missing.join(', ')); pm.execution.skipRequest();}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Estado HTTP 204', function () {pm.response.to.have.status(204);});",
+                  "pm.test('Respuesta sin contenido', function () {pm.expect(pm.response.text()).to.equal('');});",
+                  "pm.test('Respuesta privada sin caché', function () {pm.response.to.have.header('Cache-Control', 'no-store');});",
+                  "if (pm.response.code === 204) {pm.environment.unset('accessToken'); pm.environment.unset('tokenExpiresAt');}"
+                ]
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"{{password}}\",\n  \"newPassword\": \"{{newPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "password"
+              ]
+            },
+            "description": "\n\nPOST /auth/password. Completa las variables requeridas en el entorno seleccionado: password, newPassword, accessToken. Ejemplo preparado desde el contrato; no se ejecutó esta operación en Render durante la creación."
+          },
+          "response": []
+        },
+        {
+          "name": "Cerrar sesión",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const required = [\"accessToken\"];",
+                  "const missing = required.filter(key => {const value = pm.variables.get(key); return typeof value !== 'string' || value.trim() === '' || value.includes('{{');});",
+                  "if (missing.length) {console.error('Completa las variables locales del entorno: ' + missing.join(', ')); pm.execution.skipRequest();}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Estado HTTP 204', function () {pm.response.to.have.status(204);});",
+                  "pm.test('Respuesta sin contenido', function () {pm.expect(pm.response.text()).to.equal('');});",
+                  "pm.test('Respuesta privada sin caché', function () {pm.response.to.have.header('Cache-Control', 'no-store');});",
+                  "if (pm.response.code === 204) {pm.environment.unset('accessToken'); pm.environment.unset('tokenExpiresAt');}"
+                ]
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/session",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "session"
+              ]
+            },
+            "description": "\n\nDELETE /auth/session. Completa las variables requeridas en el entorno seleccionado: accessToken. Ejemplo preparado desde el contrato; no se ejecutó esta operación en Render durante la creación."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "04 Diagnóstico",
+      "item": [
+        {
+          "name": "Comprobar servicio",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const required = [];",
+                  "const missing = required.filter(key => {const value = pm.variables.get(key); return typeof value !== 'string' || value.trim() === '' || value.includes('{{');});",
+                  "if (missing.length) {console.error('Completa las variables locales del entorno: ' + missing.join(', ')); pm.execution.skipRequest();}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Estado HTTP 200', function () {pm.response.to.have.status(200);});",
+                  "pm.test('JSON válido', function () {pm.response.json();});",
+                  "pm.test('Servicio FinTrack activo', function () {const body = pm.response.json(); pm.expect(body.status).to.equal('ok'); pm.expect(body.service).to.equal('fintrack-api');});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            },
+            "description": "\n\nGET /health. Completa las variables requeridas en el entorno seleccionado: solo baseUrl. Ejemplo preparado desde el contrato; no se ejecutó esta operación en Render durante la creación."
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if (!pm.environment.get('baseUrl')) {",
+          "  console.error('Selecciona el entorno FinTrack - Local o FinTrack - Render.');",
+          "  pm.execution.skipRequest();",
+          "} else {",
+          "  const now = new Date();",
+          "  const parts = new Intl.DateTimeFormat('en-CA', {timeZone: 'America/La_Paz', year: 'numeric', month: '2-digit', day: '2-digit'}).formatToParts(now);",
+          "  const date = Object.fromEntries(parts.map(p => [p.type, p.value]));",
+          "  const month = date.year + '-' + date.month;",
+          "  const today = month + '-' + date.day;",
+          "  const defaults = {month: month, reportFrom: month + '-01', reportTo: today, transactionFrom: month + '-01T00:00:00-04:00', transactionTo: now.toISOString()};",
+          "  Object.keys(defaults).forEach(key => { if (!pm.variables.get(key)) pm.variables.set(key, defaults[key]); });",
+          "}"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000/api/v1"
+    },
+    {
+      "key": "displayName",
+      "value": "Usuario Postman"
+    },
+    {
+      "key": "email",
+      "value": ""
+    },
+    {
+      "key": "newPassword",
+      "value": ""
+    },
+    {
+      "key": "password",
+      "value": ""
+    }
+  ]
+}

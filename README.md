@@ -420,6 +420,8 @@ PostgreSQL seguirá ejecutándose hasta que se detenga explícitamente.
 
 Los endpoints privados requieren autenticación.
 
+Las [colecciones y plantillas de entorno Postman](postman/README.md) permiten probar los contratos de la API en Local o Render.
+
 ### 9.1. Iniciar sesión
 
 **Endpoint:**
